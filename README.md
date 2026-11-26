@@ -60,11 +60,11 @@ npx wrangler deploy --dry-run   # bundles the Worker and lists the bindings; upl
 
 ## Deployment, for the owner
 
-The D1 database exists already and is empty: `colab-exercise`, id `0bafc51f-2518-475e-ab08-c38c90cbfb94`, bound as `DB` in `wrangler.jsonc`. In this order:
+The D1 database exists already, with the schema applied and no data: `colab-exercise`, id `0bafc51f-2518-475e-ab08-c38c90cbfb94`, bound as `DB` in `wrangler.jsonc`. In this order:
 
 1. **Fill in the two placeholders** in `wrangler.jsonc` under `vars`: `CONTROLLER_NAME` (who is responsible for the data: you, or the university) and `CONTROLLER_CONTACT` (an email address for questions about data). They appear on the privacy page and in the "forgot password" dialog. While they are empty the privacy page shows a marked "NOT SET" notice. Nothing in the repository invents them.
 2. **Read the privacy text** (`src/legal.ts`, shown at `/privacy`) and change what does not fit your situation. It describes what the code does; whether it is sufficient for your university is your call.
-3. **Apply the schema** to the database, once: `npx wrangler login`, then `npm run db:migrate:remote` (that is `wrangler d1 migrations apply colab-exercise --remote`, which runs `migrations/0001_init.sql`).
+3. **The schema is already applied** (26 November 2026): `migrations/0001_init.sql` is in the database and recorded in its `d1_migrations` table, so `npm run db:migrate:remote` (that is `wrangler d1 migrations apply colab-exercise --remote`) reports nothing to do. Later migrations are applied with that command, after `npx wrangler login`.
 4. **Deploy:** `npm run deploy` (wrangler builds the site first). The deployment changes from "static files only" to "static files plus a Worker for `/api/*`", and creates the daily cron trigger.
 5. **Check:** open the site: a "Sign in" button appears next to the theme button. Create a teacher account, a course and an assignment; in a private window create a student account, join with the code, submit. Then go through the [laptop checklist](#test-checklist-for-a-real-laptop).
 6. **Password resets.** Without an email binding, "Forgot your password?" tells people to write to `CONTROLLER_CONTACT`. You then run `npm run reset-link -- their@address --base=https://<the site>` and send them the link it prints (it works once, for 24 hours; send it only to the address of the account).
@@ -191,6 +191,7 @@ All under `/api`, all JSON. `S` = needs to be signed in, `T` = only the course's
 - A notebook can **sign the browser out**: it can call the sign-in route with other credentials, which replaces the session cookie. The page then gets 401 and asks to sign in again. Nothing is read or changed, but it is a nuisance, and it tells you something about the notebook.
 - A notebook can use the **public routes** like anybody on the internet (sign up, try to sign in, within the rate limits), and it can send what it knows itself (its own content) anywhere: `connect-src` allows any https address, because notebooks download models and data.
 - A notebook can show **misleading output**, use the CPU and memory of the tab, and make the page ask for the microphone or the Hugging Face token (both ask the person first).
+- A notebook you run can **use your Hugging Face token**, if you have set one in this browser: it can call hosted models through `lab.inference`, which counts against your Hugging Face quota. It cannot read the token or send it anywhere else. If that matters, review submissions in a browser profile without a token, or remove the token first ("HF token" button).
 - **Check counts** come from the student's browser and can be made up. They are shown as a report, never as a fact; a teacher who needs to know runs the notebook.
 - On a **shared computer**, the session secret and the copies of course notebooks stay in the browser until the person signs out. Signing out removes them.
 - Sign-up tells whether an email address already has an account.
