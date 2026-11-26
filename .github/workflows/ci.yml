@@ -23,3 +23,5 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Bundles the Worker and checks wrangler.jsonc. Uploads nothing and needs no Cloudflare account.
+      - run: npx wrangler deploy --dry-run
