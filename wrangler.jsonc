@@ -1,14 +1,58 @@
 {
-  // Notebook Lab prototype: a static site. There is no Worker script, no database and no server
-  // code: Cloudflare only serves the files in ./dist (headers: public/_headers).
+  // Notebook Lab: a static site (./dist) plus a small Worker that answers /api/* from a D1
+  // database. The Worker stores data only; notebook code runs in the student's browser.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "colab-exercise",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-11-01",
   // Build the site before wrangler uploads it (Workers Builds and `npm run deploy`).
   "build": { "command": "npm run build" },
   "assets": {
     "directory": "./dist",
-    // One page; any other address is a real 404.
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    // Every view is a real file (index.html, courses.html, course.html, ...; see vite.config.ts),
+    // so any other address is a real 404 with 404.html.
+    "not_found_handling": "404-page",
+    // Only the API runs the Worker; pages and files are served straight from the assets, with the
+    // headers of public/_headers.
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  // Accounts, courses, assignments, work and submissions. Schema: migrations/0001_init.sql,
+  // applied once with `npm run db:migrate:remote`.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "colab-exercise",
+      "database_id": "0bafc51f-2518-475e-ab08-c38c90cbfb94",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Once a day: delete expired sessions, password reset links and rate-limit rows
+  // (worker/index.ts, server/sweep.ts). The privacy page says they are gone within a day.
+  "triggers": { "crons": ["17 3 * * *"] },
+  "vars": {
+    // PLACEHOLDERS, to be filled in by the owner before students are invited: who is responsible
+    // for the data (the data controller) and how to reach them. The privacy page shows a clearly
+    // marked notice while they are empty. Example: "Dr. A. Example, Example University" and
+    // "a.example@example.edu".
+    "CONTROLLER_NAME": "",
+    "CONTROLLER_CONTACT": ""
+    // With the email binding below, also set:
+    // "APP_URL": "https://<the site's address>",      used in the links inside emails
+    // "MAIL_FROM": "no-reply@<your sending domain>"   the sender of password reset emails
+  },
+  // Password reset emails (Cloudflare Email Service). Commented out because it needs a domain
+  // that is set up for Email Sending in this Cloudflare account (and the Workers Paid plan), and
+  // none is known yet. Without this binding "Forgot password?" tells people to write to
+  // CONTROLLER_CONTACT, and `npm run reset-link -- someone@example.edu` makes a link by hand.
+  // "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["no-reply@<your sending domain>"] }],
+  //
+  // Pull-request previews (`wrangler preview`, Workers Builds) do not inherit the bindings above
+  // and deliberately get no database, so a preview can never read or write real accounts. There
+  // the API answers 503 (except GET /api/config, which says that accounts are off) and the page
+  // shows the playground only.
+  "previews": {
+    "observability": { "enabled": true }
   }
 }
