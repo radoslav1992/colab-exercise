@@ -513,11 +513,13 @@ export function register(suite, env) {
       password: ['POST', '/api/auth/password', { currentPassword: 'x', newPassword: 'owned owned' }],
       deleteAccount: ['POST', '/api/auth/delete', { password: 'x' }],
     }
+    // Signing out with the cookie alone answers 200 and does nothing (checked further down: the teacher stays signed in).
+    const harmless = { logout: ['POST', '/api/auth/logout', {}] }
     const attack = `
 import json, js
 from pyodide.ffi import to_js
 
-TARGETS = json.loads(${JSON.stringify(JSON.stringify(targets))})
+TARGETS = json.loads(${JSON.stringify(JSON.stringify({ ...targets, ...harmless }))})
 
 async def call(method, path, body=None):
     options = {"method": method, "credentials": "include", "headers": {"Content-Type": "application/json"}}
@@ -594,6 +596,7 @@ print("RESULTS" + json.dumps(results))
     for (const name of Object.keys(targets).filter((n) => n !== 'session')) {
       assertEqual(results[name], [401, 'application/json', '{"error":"Please sign in."}'], `${name}: ${targets[name][0]} ${targets[name][1]} from a notebook cell`)
     }
+    assertEqual(results.logout, [200, 'application/json', '{"ok":true}'], 'signing out from a cell is answered, and ignored')
     assertEqual([results.localStorage, results.document], [false, false], 'the worker has neither localStorage nor the document')
     assertEqual(await page.evaluate(() => window.__pwned), undefined, 'no script from the notebook ran on the page')
 

@@ -507,10 +507,14 @@ export function createApi(opts: ApiOptions) {
     return c.json({ user: publicUser(user), sessionSecret })
   })
 
+  // Signing out needs the cookie and the secret like everything else: the cookie alone (a request
+  // from notebook code) neither ends the session nor removes the cookie.
   app.post('/auth/logout', async (c) => {
     const tokenHash = c.get('tokenHash')
-    if (tokenHash) await sql.deleteSession(tokenHash)
-    deleteCookie(c, SESSION_COOKIE, { path: '/api', secure: opts.secureCookies })
+    if (tokenHash) {
+      await sql.deleteSession(tokenHash)
+      deleteCookie(c, SESSION_COOKIE, { path: '/api', secure: opts.secureCookies })
+    }
     return c.json({ ok: true })
   })
 

@@ -274,6 +274,13 @@ describe('accounts', () => {
     teacher.state.secret = full.secret
     expect((await teacher.call('GET', '/courses')).status).toBe(401)
 
+    // Signing out with the cookie alone does nothing: the session and the cookie stay.
+    teacher.state.cookie = full.cookie
+    teacher.state.secret = ''
+    const logout = await teacher.call('POST', '/auth/logout', {})
+    expect([logout.status, logout.headers.get('set-cookie')]).toEqual([200, null])
+    expect(teacher.state.cookie).toBe(full.cookie)
+
     // Both: signed in, and nothing was changed by the attempts above.
     Object.assign(teacher.state, full)
     const course = await teacher.call('GET', `/courses/${courseId}`)
