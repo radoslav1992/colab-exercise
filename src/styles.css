@@ -107,7 +107,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -134,7 +135,115 @@ a {
   display: none !important;
 }
 
-/* --- Top ------------------------------------------------------------------------------------- */
+/* --- Site header, banner, footer --------------------------------------------------------------- */
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -60px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 8px 16px;
+}
+
+.brand {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  flex: 1 1 auto;
+}
+
+.site-nav a,
+.account-link {
+  padding: 4px 2px;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  font-size: 15px;
+}
+
+.site-nav a:hover,
+.account-link:hover {
+  border-bottom-color: var(--border);
+}
+
+.site-nav a[aria-current='page'],
+.account-link[aria-current='page'] {
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.site-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.account-link {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-banner {
+  max-width: 1048px;
+  margin: 12px auto 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--ok-bg);
+  font-size: 14.5px;
+}
+
+.view-host:focus {
+  outline: none;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 14px 16px 28px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* --- Notebook toolbar ------------------------------------------------------------------------ */
 
 .sticky {
   position: sticky;
@@ -155,26 +264,14 @@ a {
   padding: 10px 16px 8px;
 }
 
-.brand {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.brand-tag {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0 7px;
-}
-
 .picker {
   flex: 1 1 190px;
   min-width: 0;
+}
+
+.notebook-heading {
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .notebook-select {
@@ -221,6 +318,45 @@ a {
 
 .button.danger {
   color: var(--error);
+}
+
+.button.danger-solid {
+  background: var(--error);
+  border-color: var(--error);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.button.small {
+  min-height: 30px;
+  padding: 2px 9px;
+  font-size: 13.5px;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+a.button {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.button.primary {
+  color: var(--accent-contrast);
+}
+
+.link-button {
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 14px;
 }
 
 .statusbar {
@@ -280,8 +416,15 @@ a {
   color: var(--text);
 }
 
+.save-state {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .save-state[data-save='failed'],
-.save-state[data-save='partial'] {
+.save-state[data-save='partial'],
+.save-state[data-save='conflict'],
+.save-state[data-save='offline'] {
   color: var(--error);
 }
 
@@ -716,6 +859,578 @@ a {
   padding: 2px 0;
 }
 
+/* --- Pages: courses, course, assignment, account, privacy ------------------------------------- */
+
+.page {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 20px 16px 36px;
+}
+
+.page h1,
+.assignment-panel h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.page h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+}
+
+.page h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.page p {
+  margin: 0 0 10px;
+}
+
+.page-head,
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.page-meta,
+.panel-meta,
+.card-meta {
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+
+.description {
+  max-width: 78ch;
+  white-space: pre-line;
+}
+
+.crumbs {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.page-message,
+.placeholder-warning {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--ok-bg);
+  font-size: 14.5px;
+}
+
+.page-message.is-error {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.placeholder-warning {
+  background: var(--warn-bg);
+}
+
+mark.placeholder {
+  background: var(--warn-bg);
+  color: inherit;
+  font-weight: 600;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.page-loading,
+.empty {
+  color: var(--muted);
+}
+
+.page-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.prose {
+  max-width: 760px;
+}
+
+.prose h2 {
+  margin-top: 22px;
+}
+
+.prose li {
+  margin-bottom: 6px;
+}
+
+.course-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.course-card {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.course-card h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.course-card .card-meta {
+  margin: 4px 0 0;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.badge + .badge {
+  margin-left: 6px;
+}
+
+.badge[data-state='published'],
+.badge[data-state='submitted'] {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.badge[data-state='late'],
+.badge.late {
+  background: var(--warn-bg);
+}
+
+.badge[data-state='in-progress'] {
+  background: var(--accent-soft);
+}
+
+.badge.late {
+  margin-left: 8px;
+}
+
+/* Forms */
+
+.card-form {
+  max-width: 560px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.field {
+  margin: 0 0 12px;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+
+.field label,
+.field legend,
+.form-title {
+  display: block;
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field input[type='text'],
+.field input[type='email'],
+.field input[type='password'],
+.field input[type='number'],
+.field input[type='datetime-local'],
+.field textarea,
+.field select,
+.choice-row select {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.field textarea {
+  display: block;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.field input[type='number'] {
+  max-width: 160px;
+}
+
+.field input[type='datetime-local'] {
+  max-width: 260px;
+}
+
+.code-input {
+  max-width: 220px;
+  font-family: var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.field-help {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.page .field-help {
+  margin: 4px 0 10px;
+}
+
+.field.choice label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  font-weight: 400;
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  margin-bottom: 4px;
+}
+
+.choice-row select {
+  width: auto;
+  max-width: 100%;
+}
+
+.choice-row input[type='file'] {
+  max-width: 100%;
+  font-size: 14px;
+}
+
+.form-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-error {
+  min-height: 0;
+  margin: 0 0 8px;
+  color: var(--error);
+  font-size: 14.5px;
+}
+
+.form-error:empty,
+.form-status:empty {
+  display: none;
+}
+
+.form-status {
+  margin: 0;
+  color: var(--ok);
+  font-size: 14.5px;
+}
+
+.disclosure {
+  margin: 10px 0;
+}
+
+.disclosure > summary,
+.instructions > summary {
+  width: fit-content;
+  padding: 4px 2px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.disclosure > .card-form {
+  margin-top: 8px;
+}
+
+/* Tables: a real table on wide screens, one card per row on narrow ones. */
+
+.table-wrap {
+  max-width: 100%;
+  margin: 0 0 10px;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.data-table thead th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.data-table tbody th {
+  font-weight: 600;
+}
+
+.student-name {
+  display: block;
+}
+
+.student-email {
+  display: block;
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.counts li {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+}
+
+.join-box,
+.state-row,
+.release-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.state-row .field-help,
+.release-row p {
+  flex: 1 1 260px;
+  margin: 0;
+}
+
+.join-code {
+  padding: 4px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font: 600 1.5rem var(--mono);
+  letter-spacing: 0.08em;
+  user-select: all;
+}
+
+.page-section[data-join-open='false'] .join-code {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* The assignment above a notebook (student), and the grade form (teacher). */
+
+.assignment-panel {
+  max-width: 1048px;
+  margin: 14px auto 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.notebook-view .assignment-panel {
+  width: calc(100% - 32px);
+}
+
+.assignment-panel h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.assignment-panel p {
+  margin: 0 0 8px;
+}
+
+.instructions {
+  margin: 6px 0 10px;
+}
+
+.panel-status {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 14.5px;
+}
+
+.panel-status[data-status='submitted'] {
+  background: var(--ok-bg);
+}
+
+.panel-status[data-status='late'] {
+  background: var(--warn-bg);
+}
+
+.panel-grade {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+}
+
+.grade-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.review-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 12px 28px;
+  margin: 8px 0;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-content: start;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 14.5px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.reported-note,
+.review-note {
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.grade-form .field textarea {
+  min-height: 84px;
+}
+
+.submit-button {
+  order: 99;
+}
+
+@media (max-width: 720px) {
+  .review-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .data-table,
+  .data-table tbody,
+  .data-table tr,
+  .data-table th,
+  .data-table td {
+    display: block;
+  }
+
+  .data-table tr {
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+  }
+
+  .data-table th,
+  .data-table td {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 8px;
+    padding: 3px 0;
+    border: none;
+  }
+
+  .data-table td:empty {
+    display: none;
+  }
+
+  .data-table td > .badge,
+  .data-table td > .button,
+  .data-table td > span > .badge {
+    justify-self: start;
+  }
+
+  .data-table th::before,
+  .data-table td::before {
+    content: attr(data-label);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .page {
+    padding: 16px 12px 28px;
+  }
+
+  .site-header-inner {
+    padding: 8px 12px;
+  }
+
+  .join-code {
+    font-size: 1.25rem;
+  }
+}
+
 /* --- Dialogs, drop hint, footer --------------------------------------------------------------- */
 
 .dialog {
@@ -748,13 +1463,44 @@ a {
   margin-bottom: 4px;
 }
 
-.dialog input {
+.dialog input:not([type='radio']) {
   width: 100%;
   min-height: 38px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg);
+}
+
+.dialog ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  font-size: 14.5px;
+}
+
+.dialog li {
+  margin-bottom: 4px;
+}
+
+.dialog .field {
+  margin-bottom: 12px;
+}
+
+.dialog .field-help {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+}
+
+.dialog .form-error,
+.dialog .form-status {
+  margin-bottom: 12px;
+}
+
+.dialog-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 14px 0 0 !important;
 }
 
 .dialog progress {

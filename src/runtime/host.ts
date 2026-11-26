@@ -175,15 +175,30 @@ async function inference(params: Record<string, unknown>): Promise<Answer> {
   }
 }
 
+/**
+ * Answer a request from the worker. The request comes from notebook code and is untrusted: every
+ * method checks its own arguments, and none of them talks to this site's API or reads the page's
+ * storage (the session secret lives there). Keep it that way when adding a method.
+ */
 export async function answerHostRequest(method: HostMethod, params: unknown): Promise<Answer> {
+  const args = (typeof params === 'object' && params !== null ? params : {}) as Record<string, unknown>
   switch (method) {
-    case 'audio.decode':
-      return audioDecode(params as { bytes: ArrayBuffer; sr: number })
-    case 'audio.record':
-      return audioRecord(params as { seconds: number; sr: number })
+    case 'audio.decode': {
+      if (!(args.bytes instanceof ArrayBuffer)) throw new NamedError('TypeError', 'lab: audio must be bytes')
+      return audioDecode({ bytes: args.bytes, sr: Number(args.sr) })
+    }
+    case 'audio.record': {
+      const seconds = Number(args.seconds)
+      if (!Number.isFinite(seconds) || seconds <= 0 || seconds > 60) {
+        throw new NamedError('ValueError', 'lab.record: the number of seconds must be between 0 and 60')
+      }
+      return audioRecord({ seconds, sr: Number(args.sr) })
+    }
     case 'token.dialog':
       return { result: { set: await openTokenDialog() }, transfer: [] }
     case 'inference':
-      return inference(params as Record<string, unknown>)
+      return inference(args)
+    default:
+      throw new NamedError('LabError', 'lab: the page does not offer this.')
   }
 }

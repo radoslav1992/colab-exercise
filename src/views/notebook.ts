@@ -1,4 +1,13 @@
-/** The notebook page: toolbar, status line, the list of cells, running, saving, opening and downloading. */
+/**
+ * The notebook view: toolbar, status line, the list of cells, running, opening and downloading.
+ *
+ * It is used in three ways:
+ *   playground  the sample notebooks and files from this device, saved in this browser only
+ *               (exactly what the site is for somebody who is not signed in);
+ *   remote      a notebook that lives on the server (a student's copy of an assignment, a
+ *               teacher's starter); whoever creates the view saves it (src/sync.ts);
+ *   review      a submission as a teacher sees it; nothing is saved anywhere.
+ */
 import {
   CHECK_TAG,
   checkState,
@@ -13,25 +22,44 @@ import {
   type Cell,
   type DisplayOutput,
   type Notebook,
-} from './notebook/ipynb.ts'
-import { Runtime, type RuntimeState } from './runtime/client.ts'
-import type { Status } from './runtime/protocol.ts'
-import { hasToken, onTokenChange, secrets } from './runtime/token.ts'
-import { loadSample, samples } from './samples.ts'
-import {
-  currentDocId,
-  deleteDoc,
-  loadDoc,
-  saveDoc,
-  savedTheme,
-  saveTheme,
-  setCurrentDocId,
-  type Theme,
-} from './storage.ts'
-import { CellView, type CellHost } from './ui/cell.ts'
-import { openTokenDialog } from './ui/dialogs.ts'
+} from '../notebook/ipynb.ts'
+import { Runtime, type RuntimeState } from '../runtime/client.ts'
+import type { Status } from '../runtime/protocol.ts'
+import { hasToken, onTokenChange, secrets } from '../runtime/token.ts'
+import { loadSample, samples } from '../samples.ts'
+import { currentDocId, deleteDoc, loadDoc, saveDoc, setCurrentDocId } from '../storage.ts'
+import { CellView, type CellHost } from '../ui/cell.ts'
+import { openTokenDialog } from '../ui/dialogs.ts'
+import { downloadBlob } from '../ui/dom.ts'
 
-type SaveState = 'saved' | 'pending' | 'partial' | 'failed'
+/** A view of the page (src/app.ts shows one at a time). */
+export interface View {
+  readonly root: HTMLElement
+  /** Called when the view is replaced: stop timers, workers and listeners. */
+  destroy(): void
+}
+
+export type SaveKind = 'saved' | 'pending' | 'partial' | 'failed' | 'offline' | 'conflict' | 'unsaved'
+
+export interface NotebookOptions {
+  mode: 'playground' | 'remote' | 'review'
+  /** Shown where the playground has its menu of notebooks. */
+  heading?: string
+  /** "Open" and drag and drop replace the notebook with a file from this device. */
+  canOpenFiles?: boolean
+  /** Shown above the cells (the assignment, the grade form). */
+  panel?: HTMLElement
+  /** More buttons for the toolbar. */
+  actions?: HTMLElement[]
+  /** Replaces the last sentence of the footer, which says where the notebook is saved. */
+  savedWhere?: string
+  /** remote: the notebook changed and should be saved. */
+  onChanged?(): void
+  /** remote: a file from this device replaced the notebook. */
+  onFileOpened?(name: string): void
+  /** What "Download" saves, when it is not the notebook as it is on the page. */
+  downloadText?(): string | null
+}
 
 const FILE_DOC = 'file'
 /** Text of one cell's streams beyond this is dropped while it runs, so a runaway loop cannot fill the memory. */
@@ -44,7 +72,8 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text =
   return node
 }
 
-export class App implements CellHost {
+export class NotebookView implements CellHost, View {
+  readonly root = h('div', 'notebook-view')
   private notebook: Notebook = emptyNotebook()
   private docId = FILE_DOC
   private docName = 'notebook.ipynb'
@@ -53,14 +82,18 @@ export class App implements CellHost {
   private running: CellView | null = null
   private executionCounter = 0
   private saveTimer = 0
-  private saveState: SaveState = 'saved'
+  private saveState: SaveKind = 'saved'
   private streamChars = 0
   private deleted: { cell: Cell; index: number } | null = null
   private noticeTimer = 0
+  private destroyed = false
 
   private readonly runtime: Runtime
+  private readonly listeners = new AbortController()
+  private readonly stopTokenUpdates: () => void
   private readonly cellsEl = h('main', 'cells')
   private readonly select = h('select', 'notebook-select')
+  private readonly headingEl = h('div', 'notebook-heading')
   private readonly statusEl = h('span', 'runtime-status')
   private readonly statusText = h('span')
   private readonly progress = h('progress', 'runtime-progress')
@@ -69,34 +102,50 @@ export class App implements CellHost {
   private readonly noticeEl = h('div', 'notice')
   private readonly tokenButton = h('button', 'button')
   private readonly resetButton = h('button', 'button')
-  private readonly themeButton = h('button', 'button')
   private readonly fileInput = h('input')
   private readonly dropHint = h('div', 'drop-hint', 'Drop the .ipynb file to open it')
 
-  constructor(private readonly root: HTMLElement) {
+  constructor(private readonly options: NotebookOptions = { mode: 'playground' }) {
     this.runtime = new Runtime({ status: (status, state, detail) => this.showStatus(status, state, detail) })
     this.build()
-    this.applyTheme(savedTheme())
-    onTokenChange(() => this.showToken())
-    window.addEventListener('beforeunload', () => this.saveNow())
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') this.saveNow()
-    })
+    this.stopTokenUpdates = onTokenChange(() => this.showToken())
+    if (options.mode === 'playground') {
+      const signal = this.listeners.signal
+      window.addEventListener('beforeunload', () => this.saveNow(), { signal })
+      document.addEventListener(
+        'visibilitychange',
+        () => {
+          if (document.visibilityState === 'hidden') this.saveNow()
+        },
+        { signal },
+      )
+    }
+  }
+
+  private get isPlayground(): boolean {
+    return this.options.mode === 'playground'
+  }
+
+  private get canOpenFiles(): boolean {
+    return this.isPlayground || this.options.canOpenFiles === true
   }
 
   // --- Building the page ------------------------------------------------------------------------
 
   private build(): void {
-    const header = h('header', 'topbar')
-    const brand = h('div', 'brand')
-    brand.append(h('span', 'brand-name', 'Notebook Lab'), h('span', 'brand-tag', 'prototype'))
+    const header = h('div', 'topbar')
 
     const picker = h('div', 'picker')
-    const label = h('label', 'visually-hidden', 'Notebook')
-    label.htmlFor = 'notebook-select'
-    this.select.id = 'notebook-select'
-    this.select.addEventListener('change', () => void this.openDoc(this.select.value))
-    picker.append(label, this.select)
+    if (this.isPlayground) {
+      const label = h('label', 'visually-hidden', 'Notebook')
+      label.htmlFor = 'notebook-select'
+      this.select.id = 'notebook-select'
+      this.select.addEventListener('change', () => void this.openDoc(this.select.value))
+      picker.append(label, this.select)
+    } else {
+      this.headingEl.textContent = this.options.heading ?? ''
+      picker.append(this.headingEl)
+    }
 
     const actions = h('div', 'actions')
     actions.setAttribute('role', 'toolbar')
@@ -112,17 +161,20 @@ export class App implements CellHost {
     action('Run all', () => this.runAll(), 'button primary', 'Run every code cell from top to bottom')
     action('Clear outputs', () => this.clearOutputs())
     action('Restart', () => this.restart(), 'button', 'Stop Python and forget all variables')
-    action('Open', () => this.fileInput.click(), 'button', 'Open a .ipynb file from this device')
+    if (this.canOpenFiles) {
+      action('Open', () => this.fileInput.click(), 'button', this.isPlayground ? 'Open a .ipynb file from this device' : 'Replace this notebook with a .ipynb file from this device')
+    }
     action('Download', () => this.download(), 'button', 'Save this notebook as a .ipynb file')
-    this.resetButton.type = 'button'
-    this.resetButton.textContent = 'Reset'
-    this.resetButton.title = 'Throw away your changes and load the original sample notebook'
-    this.resetButton.addEventListener('click', () => void this.resetSample())
+    if (this.isPlayground) {
+      this.resetButton.type = 'button'
+      this.resetButton.textContent = 'Reset'
+      this.resetButton.title = 'Throw away your changes and load the original sample notebook'
+      this.resetButton.addEventListener('click', () => void this.resetSample())
+      actions.append(this.resetButton)
+    }
     this.tokenButton.type = 'button'
     this.tokenButton.addEventListener('click', () => void openTokenDialog())
-    this.themeButton.type = 'button'
-    this.themeButton.addEventListener('click', () => this.toggleTheme())
-    actions.append(this.resetButton, this.tokenButton, this.themeButton)
+    actions.append(this.tokenButton, ...(this.options.actions ?? []))
 
     this.fileInput.type = 'file'
     this.fileInput.accept = '.ipynb,application/x-ipynb+json,application/json'
@@ -132,7 +184,7 @@ export class App implements CellHost {
       this.fileInput.value = ''
       if (file) void this.openFile(file)
     })
-    header.append(brand, picker, actions, this.fileInput)
+    header.append(picker, actions, this.fileInput)
 
     const statusbar = h('div', 'statusbar')
     this.statusEl.setAttribute('role', 'status')
@@ -151,44 +203,80 @@ export class App implements CellHost {
 
     const footer = h('footer', 'footer')
     footer.append(
-      'Python runs in this browser tab (Pyodide); models run on this computer. Notebooks are saved in this browser only. ',
+      'Python runs in this browser tab (Pyodide); models run on this computer. ',
+      `${this.options.savedWhere ?? 'Notebooks are saved in this browser only.'} `,
       'Shift+Enter runs a cell; Escape leaves the editor.',
     )
 
     const sticky = h('div', 'sticky')
     sticky.append(header, statusbar)
-    this.root.append(sticky, this.noticeEl, this.cellsEl, footer, this.dropHint)
+    this.root.append(sticky, this.noticeEl)
+    if (this.options.panel) this.root.append(this.options.panel)
+    this.root.append(this.cellsEl, footer, this.dropHint)
 
     this.showStatus(null, 'stopped')
     this.showSave('saved')
     this.showToken()
-    this.installDragAndDrop()
+    if (this.canOpenFiles) this.installDragAndDrop()
   }
 
   private installDragAndDrop(): void {
+    const signal = this.listeners.signal
     let depth = 0
     const hasFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files')
-    window.addEventListener('dragenter', (event) => {
-      if (!hasFiles(event)) return
-      depth += 1
-      this.dropHint.hidden = false
-    })
-    window.addEventListener('dragleave', (event) => {
-      if (!hasFiles(event)) return
-      depth = Math.max(0, depth - 1)
-      if (depth === 0) this.dropHint.hidden = true
-    })
-    window.addEventListener('dragover', (event) => {
-      if (hasFiles(event)) event.preventDefault()
-    })
-    window.addEventListener('drop', (event) => {
-      if (!hasFiles(event)) return
-      event.preventDefault()
-      depth = 0
-      this.dropHint.hidden = true
-      const file = event.dataTransfer?.files[0]
-      if (file) void this.openFile(file)
-    })
+    window.addEventListener(
+      'dragenter',
+      (event) => {
+        if (!hasFiles(event)) return
+        depth += 1
+        this.dropHint.hidden = false
+      },
+      { signal },
+    )
+    window.addEventListener(
+      'dragleave',
+      (event) => {
+        if (!hasFiles(event)) return
+        depth = Math.max(0, depth - 1)
+        if (depth === 0) this.dropHint.hidden = true
+      },
+      { signal },
+    )
+    window.addEventListener(
+      'dragover',
+      (event) => {
+        if (hasFiles(event)) event.preventDefault()
+      },
+      { signal },
+    )
+    window.addEventListener(
+      'drop',
+      (event) => {
+        if (!hasFiles(event)) return
+        event.preventDefault()
+        depth = 0
+        this.dropHint.hidden = true
+        const file = event.dataTransfer?.files[0]
+        if (file) void this.openFile(file)
+      },
+      { signal },
+    )
+  }
+
+  /** Leave the page: Python stops, and (in the playground) the notebook is saved in this browser. */
+  destroy(): void {
+    if (this.destroyed) return
+    if (this.isPlayground) this.saveNow()
+    this.destroyed = true
+    window.clearTimeout(this.saveTimer)
+    window.clearTimeout(this.noticeTimer)
+    this.listeners.abort()
+    this.stopTokenUpdates()
+    this.queue = []
+    this.runtime.dispose()
+    for (const view of this.views) view.destroy()
+    this.views = []
+    this.root.remove()
   }
 
   // --- Status line ------------------------------------------------------------------------------
@@ -217,15 +305,22 @@ export class App implements CellHost {
     if (progress !== undefined) this.progress.value = progress
   }
 
-  private showSave(state: SaveState): void {
+  /** Show where the notebook is saved. The playground has fixed texts; the other modes pass their own. */
+  showSave(state: SaveKind, text?: string, title = ''): void {
     this.saveState = state
     this.saveEl.dataset.save = state
-    this.saveEl.textContent = {
-      saved: 'Saved in this browser',
-      pending: 'Saving…',
-      partial: 'Saved without outputs (browser storage is full)',
-      failed: 'Not saved: browser storage is unavailable. Download the notebook to keep it.',
-    }[state]
+    this.saveEl.title = title
+    this.saveEl.textContent =
+      text ??
+      {
+        saved: 'Saved in this browser',
+        pending: 'Saving…',
+        partial: 'Saved without outputs (browser storage is full)',
+        failed: 'Not saved: browser storage is unavailable. Download the notebook to keep it.',
+        offline: 'Saved in this browser',
+        conflict: 'Not saved',
+        unsaved: 'Not saved',
+      }[state]
   }
 
   private showToken(): void {
@@ -236,19 +331,28 @@ export class App implements CellHost {
       : 'Set your Hugging Face token (only needed for hosted models)'
   }
 
-  private showChecks(): void {
-    const checks = this.notebook.cells.filter((cell) => cell.cell_type === 'code' && hasTag(cell, CHECK_TAG))
-    const passed = checks.filter((cell) => checkState(cell) === 'passed').length
-    const failed = checks.filter((cell) => checkState(cell) === 'failed').length
-    this.checksEl.hidden = checks.length === 0
-    this.checksEl.dataset.failed = String(failed)
-    this.checksEl.textContent = `Checks: ${passed} of ${checks.length} passed`
+  /** How many check cells there are, and how many of them passed when they last ran. */
+  checks(): { passed: number; failed: number; total: number } {
+    const cells = this.notebook.cells.filter((cell) => cell.cell_type === 'code' && hasTag(cell, CHECK_TAG))
+    return {
+      passed: cells.filter((cell) => checkState(cell) === 'passed').length,
+      failed: cells.filter((cell) => checkState(cell) === 'failed').length,
+      total: cells.length,
+    }
   }
 
-  private notify(text: string, action?: { label: string; run(): void }): void {
+  private showChecks(): void {
+    const { passed, failed, total } = this.checks()
+    this.checksEl.hidden = total === 0
+    this.checksEl.dataset.failed = String(failed)
+    this.checksEl.textContent = `Checks: ${passed} of ${total} passed`
+  }
+
+  /** Show a message above the cells, with buttons. Without `keep`, a message with actions goes away after ten seconds. */
+  notify(text: string, actions: Array<{ label: string; run(): void }> = [], keep = false): void {
     window.clearTimeout(this.noticeTimer)
     this.noticeEl.replaceChildren(h('span', '', text))
-    if (action) {
+    for (const action of actions) {
       const button = h('button', 'button', action.label)
       button.type = 'button'
       button.addEventListener('click', () => {
@@ -257,45 +361,50 @@ export class App implements CellHost {
       })
       this.noticeEl.append(button)
     }
-    const close = h('button', 'button', 'Dismiss')
-    close.type = 'button'
-    close.addEventListener('click', () => (this.noticeEl.hidden = true))
-    this.noticeEl.append(close)
+    if (!keep) {
+      const close = h('button', 'button', 'Dismiss')
+      close.type = 'button'
+      close.addEventListener('click', () => (this.noticeEl.hidden = true))
+      this.noticeEl.append(close)
+    }
     this.noticeEl.hidden = false
-    if (action) this.noticeTimer = window.setTimeout(() => (this.noticeEl.hidden = true), 10_000)
+    if (actions.length > 0 && !keep) this.noticeTimer = window.setTimeout(() => (this.noticeEl.hidden = true), 10_000)
   }
 
-  // --- Theme ------------------------------------------------------------------------------------
-
-  private effectiveTheme(): Theme {
-    const set = document.documentElement.dataset.theme
-    if (set === 'light' || set === 'dark') return set
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-
-  private applyTheme(theme: Theme | null): void {
-    if (theme) document.documentElement.dataset.theme = theme
-    const now = this.effectiveTheme()
-    this.themeButton.textContent = now === 'dark' ? 'Light' : 'Dark'
-    this.themeButton.setAttribute('aria-label', now === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme')
-  }
-
-  private toggleTheme(): void {
-    const next: Theme = this.effectiveTheme() === 'dark' ? 'light' : 'dark'
-    saveTheme(next)
-    this.applyTheme(next)
+  hideNotice(): void {
+    window.clearTimeout(this.noticeTimer)
+    this.noticeEl.hidden = true
   }
 
   // --- Documents: samples, opened files, autosave -----------------------------------------------
 
-  /** First load: the notebook that was open last time, else the first sample. */
+  /** Playground, first load: the notebook that was open last time, else the first sample. */
   async start(): Promise<void> {
     const last = currentDocId()
     const known = last && (last === FILE_DOC ? loadDoc(FILE_DOC) !== null : samples.some((s) => `sample:${s.file}` === last))
     await this.openDoc(known ? last : `sample:${samples[0].file}`)
   }
 
+  /** Show a notebook (remote and review modes). Python is stopped: another notebook starts with a clean memory. */
+  show(notebook: Notebook, name: string): void {
+    this.setNotebook(notebook, FILE_DOC, name)
+  }
+
+  /** The notebook as it is on the page. */
+  get current(): Notebook {
+    return this.notebook
+  }
+
+  get fileName(): string {
+    return this.docName
+  }
+
+  setHeading(text: string): void {
+    this.headingEl.textContent = text
+  }
+
   private fillSelect(): void {
+    if (!this.isPlayground) return
     this.select.replaceChildren()
     const group = document.createElement('optgroup')
     group.label = 'Course notebooks'
@@ -335,6 +444,7 @@ export class App implements CellHost {
       this.select.value = this.docId
       return
     }
+    if (this.destroyed) return
     let notebook: Notebook
     try {
       notebook = parseNotebook(text)
@@ -357,10 +467,17 @@ export class App implements CellHost {
       this.notify(err instanceof NotebookFormatError ? err.message : `Could not read ${file.name}.`)
       return
     }
-    this.saveNow()
+    if (this.destroyed) return
     const name = file.name.toLowerCase().endsWith('.ipynb') ? file.name : `${file.name}.ipynb`
-    this.setNotebook(notebook, FILE_DOC, name)
-    this.saveNow(true)
+    if (this.isPlayground) {
+      this.saveNow()
+      this.setNotebook(notebook, FILE_DOC, name)
+      this.saveNow(true)
+    } else {
+      this.setNotebook(notebook, FILE_DOC, name)
+      this.options.onFileOpened?.(name)
+      this.options.onChanged?.()
+    }
   }
 
   private async resetSample(): Promise<void> {
@@ -388,19 +505,25 @@ export class App implements CellHost {
     this.renumber()
     this.fillSelect()
     this.resetButton.hidden = !id.startsWith('sample:')
-    document.title = `${name} · Notebook Lab`
+    if (this.isPlayground) document.title = `${name} · Notebook Lab`
     this.showChecks()
     window.scrollTo({ top: 0 })
   }
 
   changed(): void {
+    if (this.destroyed) return
+    if (!this.isPlayground) {
+      this.options.onChanged?.()
+      return
+    }
     this.showSave('pending')
     window.clearTimeout(this.saveTimer)
     this.saveTimer = window.setTimeout(() => this.saveNow(), 600)
   }
 
-  /** Write the notebook to localStorage now, if there is something to write. */
+  /** Playground: write the notebook to localStorage now, if there is something to write. */
   private saveNow(force = false): void {
+    if (!this.isPlayground || this.destroyed) return
     if (!force && this.saveState !== 'pending') return
     window.clearTimeout(this.saveTimer)
     this.saveTimer = 0
@@ -415,16 +538,14 @@ export class App implements CellHost {
     }
   }
 
+  /** The notebook on the page as `.ipynb` text, as "Download" saves it. */
+  serialize(): string {
+    return serializeNotebook(this.notebook, { redact: secrets() })
+  }
+
   private download(): void {
-    const text = serializeNotebook(this.notebook, { redact: secrets() })
-    const url = URL.createObjectURL(new Blob([text], { type: 'application/x-ipynb+json' }))
-    const link = document.createElement('a')
-    link.href = url
-    link.download = this.docName
-    document.body.append(link)
-    link.click()
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    const text = this.options.downloadText?.() ?? this.serialize()
+    downloadBlob(new Blob([text], { type: 'application/x-ipynb+json' }), this.docName)
   }
 
   // --- Cells ------------------------------------------------------------------------------------
@@ -463,7 +584,7 @@ export class App implements CellHost {
     ;(this.views[index] ?? this.views[index - 1])?.focusPrimary()
     this.showChecks()
     this.changed()
-    this.notify('Cell deleted.', { label: 'Undo', run: () => this.undoDelete() })
+    this.notify('Cell deleted.', [{ label: 'Undo', run: () => this.undoDelete() }])
   }
 
   private undoDelete(): void {
@@ -526,6 +647,11 @@ export class App implements CellHost {
 
   // --- Running ----------------------------------------------------------------------------------
 
+  /** True while a cell is running or waiting to run. */
+  get busy(): boolean {
+    return this.running !== null || this.queue.length > 0
+  }
+
   run(view: CellView, advance: boolean): void {
     if (view.cell.cell_type !== 'code') {
       view.render()
@@ -569,6 +695,7 @@ export class App implements CellHost {
         stream: (name, text) => this.onStream(view, name, text),
         display: (output) => this.onDisplay(view, output, label),
       })
+      if (this.destroyed) return
       view.flushStream()
       if (error) {
         const hide = (text: string) => redactText(text, secrets())

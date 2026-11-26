@@ -41,8 +41,14 @@ export type WorkerToMain =
   | { type: 'done'; runId: number; error: RunError | null }
   | { type: 'host-request'; id: number; method: HostMethod; params: unknown }
 
-/** Things only the page can do; the worker asks for them (src/runtime/host.ts answers). */
-export type HostMethod = 'audio.decode' | 'audio.record' | 'token.dialog' | 'inference'
+/**
+ * Things only the page can do; the worker asks for them (src/runtime/host.ts answers). This list is
+ * the whole surface that code in a notebook can reach on the page. None of these methods touches
+ * the site's API, the session or the page's storage, and none may ever be added that does: see
+ * "Security model" in the README.
+ */
+export const HOST_METHODS = ['audio.decode', 'audio.record', 'token.dialog', 'inference'] as const
+export type HostMethod = (typeof HOST_METHODS)[number]
 
 /** An error with a name that the Python side maps to an exception class (python/lab/_bridge.py). */
 export class NamedError extends Error {

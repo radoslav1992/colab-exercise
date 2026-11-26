@@ -2,6 +2,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { extname, resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
+import { PAGES } from './src/router.ts'
 
 const PYODIDE_FILES = ['pyodide.mjs', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']
 const TYPES: Record<string, string> = { '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.zip': 'application/zip', '.json': 'application/json' }
@@ -46,8 +47,34 @@ function offlineRuntime(mode: string): Plugin {
   }
 }
 
+/**
+ * Every view has its own address (src/router.ts), and each address is a real file: a copy of
+ * index.html. Cloudflare then serves /course from course.html, reload works on every view, and an
+ * address that is none of them is a real 404 (wrangler.jsonc: "not_found_handling": "404-page").
+ * The dev server needs nothing: it answers every page address with index.html anyway.
+ */
+function viewPages(): Plugin {
+  let outDir = 'dist'
+  return {
+    name: 'view-pages',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    closeBundle() {
+      const index = resolve(outDir, 'index.html')
+      if (!existsSync(index)) return
+      for (const page of PAGES) cpSync(index, resolve(outDir, `${page}.html`))
+    },
+  }
+}
+
+/** `npm run dev` starts the API next to Vite and passes its address here; `vite` alone has no API (playground only). */
+const apiTarget = process.env.NOTEBOOK_LAB_API
+
 export default defineConfig(({ mode }) => ({
-  plugins: [offlineRuntime(mode)],
+  plugins: [offlineRuntime(mode), viewPages()],
+  server: apiTarget ? { proxy: { '/api': { target: apiTarget, changeOrigin: false } } } : undefined,
   worker: { format: 'es' as const },
   build: {
     target: 'es2022',

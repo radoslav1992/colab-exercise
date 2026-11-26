@@ -33,9 +33,10 @@ export function setToken(token: string | null): void {
   for (const listener of listeners) listener(Boolean(token))
 }
 
-/** Called with true or false whenever the token is set or removed. */
-export function onTokenChange(listener: (set: boolean) => void): void {
+/** Called with true or false whenever the token is set or removed. Returns a function that stops the calls. */
+export function onTokenChange(listener: (set: boolean) => void): () => void {
   listeners.add(listener)
+  return () => listeners.delete(listener)
 }
 
 /** Every secret that must be removed from text before it is shown or saved. */
