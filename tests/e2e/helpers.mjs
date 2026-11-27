@@ -96,7 +96,7 @@ export function notebook(cells, extra = {}) {
   }
 }
 
-/** A page with helpers bound to it, and a record of everything the console complained about. */
+/** The playground (`url` is its address) in a new page, with a record of everything the console complained about. */
 export async function openApp(context, url) {
   const page = await context.newPage()
   const problems = []

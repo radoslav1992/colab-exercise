@@ -7,6 +7,7 @@ import { accountDeleted, accountsAvailable, resetPassword, setUser, signOut, sit
 import { openAuthDialog } from '../ui/auth.ts'
 import { confirmDialog } from '../ui/confirm.ts'
 import { button, el, field, formatDate, messageBox, uid } from '../ui/dom.ts'
+import { emptyState } from '../ui/doodle.ts'
 import { setFlash } from '../ui/flash.ts'
 import type { View } from './notebook.ts'
 import { errorText, Page } from './page.ts'
@@ -29,8 +30,9 @@ class StaticPage implements View {
 export function notFoundView(): View {
   return new StaticPage('Page not found', [
     el('h1', {}, ['Page not found']),
-    el('p', {}, ['There is nothing at this address.']),
-    el('p', { class: 'form-buttons' }, [link({ view: 'home' }, 'Go to the start', 'button')]),
+    emptyState('not-found', 'There is nothing at this address.', 'lost'),
+    // The start page is a document of its own, not a view of the app.
+    el('p', { class: 'form-buttons' }, [el('a', { class: 'button', href: '/' }, ['Go to the start']), link({ view: 'playground' }, 'Open the playground', 'button')]),
   ])
 }
 
@@ -215,7 +217,7 @@ export class AccountView extends Page {
           if (!gone) return
           accountDeleted()
           setFlash('Your account and its data were deleted.')
-          navigate({ view: 'home' })
+          navigate({ view: 'playground' })
         }),
       'button danger',
     )
@@ -228,7 +230,8 @@ export class AccountView extends Page {
       el('section', { class: 'page-section' }, [
         el('h2', {}, ['Sign out']),
         el('p', {}, ['Signing out also removes the copies of your course notebooks from this browser. They stay on the server.']),
-        button('Sign out', () => void signOut().then(() => navigate({ view: 'home' }))),
+        // Signed out, home is the landing page: another document.
+        button('Sign out', () => void signOut().then(() => window.location.assign('/'))),
       ]),
       el('section', { class: 'page-section' }, [
         el('h2', {}, ['Delete account']),

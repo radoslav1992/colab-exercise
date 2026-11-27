@@ -9,6 +9,7 @@ import { link } from '../router.ts'
 import { remoteKey } from '../storage.ts'
 import { confirmDialog } from '../ui/confirm.ts'
 import { el, formatDateTime, formatNumber } from '../ui/dom.ts'
+import { doodle } from '../ui/doodle.ts'
 import type { View } from './notebook.ts'
 import { RemoteNotebook } from './remote.ts'
 
@@ -107,7 +108,9 @@ export class WorkView implements View {
     if (mine.graded) {
       const grade =
         mine.grade === null ? 'No grade' : assignment.points !== null ? `${formatNumber(mine.grade)} of ${formatNumber(assignment.points)}` : formatNumber(mine.grade)
-      this.gradeEl.append(el('h2', {}, ['Grade and feedback']), el('p', { class: 'grade-value' }, [`Grade: ${grade}`]))
+      // The grade is circled, the way a teacher marks a paper.
+      const circled = mine.grade === null ? grade : el('span', { class: 'grade-number' }, [grade, doodle('circle')])
+      this.gradeEl.append(el('h2', {}, ['Grade and feedback']), el('p', { class: 'grade-value' }, ['Grade: ', circled]))
       if (mine.gradedBeforeLatest) this.gradeEl.append(el('p', { class: 'field-help' }, ['This grade was given for an earlier submission than your latest one.']))
       if (mine.feedback) {
         const feedback = el('div', { class: 'markdown feedback' })

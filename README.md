@@ -13,11 +13,12 @@ Python runs in the student's tab, models run on the student's own graphics card,
 - **Python in a Web Worker** (Pyodide). A long computation never freezes the page; "Restart" terminates the worker and starts a new one.
 - **`lab`**, a small Python package that connects notebooks to what only the browser can do: models on the graphics card through Transformers.js, audio decoding and recording, rich outputs, and models hosted by Hugging Face with the student's own token.
 - **Check cells.** A code cell with the tag `check` shows *Check passed* or *Check failed* after it runs, and the page counts them.
-- **The playground.** Without an account the site is the notebook page with six sample notebooks, saved in the browser only. This is all a visitor sees, and all there is on a deployment without a database.
+- **The playground** at `/playground`. Without an account the app is the notebook page with six sample notebooks, saved in the browser only. On a deployment without a database this is all there is of the app. `/playground?sample=03-llm-tokens-and-sampling` opens one of the samples (the name is checked against the list).
+- **A landing page** at `/`: what the product is, the five topics with a link to each sample notebook, how it works for a teacher, plain facts and the limits. It is a document of its own with its content in the HTML, readable without JavaScript, and it loads none of the app ([the landing page and the look](#the-landing-page-and-the-look)).
 
 With an account:
 
-- **Accounts.** Email, password and name; a role chosen at sign-up (teacher or student) that only decides what the home page shows first. Sign in and out, change name and password, delete the account, reset a forgotten password. No email verification.
+- **Accounts.** Email, password and name; a role chosen at sign-up (teacher or student) that only decides which part of "My courses" comes first. Sign in and out, change name and password, delete the account, reset a forgotten password. No email verification.
 - **Courses.** A teacher creates a course and gets a join code (8 characters without look-alikes such as 0/O and 1/I/L). The code can be replaced and joining switched off. The teacher sees the roster (name, email, date joined), can remove a student, archive or delete the course. A student joins with the code and can leave. Anybody can teach some courses and be a student in others: what a person may do is decided per course, never by the role.
 - **Assignments.** Made from a notebook: an uploaded `.ipynb`, a sample, the notebook open in the playground, or an empty one. Title, instructions (Markdown, sanitized), due date and time (stored as UTC, shown in local time), points. States: *draft* (invisible to students), *published*, *closed* (no more submissions; can be opened again). The starter can be edited in the normal editor before publishing; replacing it afterwards reaches only students who have not opened the assignment yet. Students only ever receive the starter.
 - **Student work.** Opening an assignment makes the student's own copy. It is saved on the server while they type (with a visible state) and in the browser, so that work survives a closed tab and a lost connection. A second tab cannot silently overwrite newer work: the server refuses a save on top of an old version, and the student chooses "Keep mine" or "Load the newer one".
@@ -54,9 +55,10 @@ npm test             # vitest: unit tests, the API against SQLite, lab against r
 npm run test:e2e     # the app in Chromium; needs Playwright, see tests/e2e/helpers.mjs
 npm run build        # the site, in dist/
 npx wrangler deploy --dry-run   # bundles the Worker and lists the bindings; uploads nothing
+npm run doodles      # draw the doodles again (src/doodles/*.svg, public/favicon.svg); only needed after changing scripts/doodles.mjs
 ```
 
-`npm run test:e2e` builds a second bundle (`dist-e2e/`) that needs no internet. The notebook tests run against a Node server (the build folder served like Cloudflare serves it, plus the API on SQLite in memory). The tests of accounts and courses run against the real Worker under `wrangler dev` with a local D1 database, whose schema is applied by `wrangler d1 migrations apply`; if `wrangler dev` cannot start, they fall back to the Node server and say so. `E2E_SUITE=accounts` or `E2E_SUITE=notebooks` runs one half, `SCREENSHOT_DIR=…` saves screenshots.
+`npm run test:e2e` builds a second bundle (`dist-e2e/`) that needs no internet. The notebook tests run against a Node server (the build folder served like Cloudflare serves it, plus the API on SQLite in memory). The tests of the landing page, accounts and courses run against the real Worker under `wrangler dev` with a local D1 database, whose schema is applied by `wrangler d1 migrations apply`; if `wrangler dev` cannot start, they fall back to the Node server and say so. `E2E_SUITE=accounts` or `E2E_SUITE=notebooks` runs one half, `SCREENSHOT_DIR=…` saves screenshots.
 
 ## Deployment, for the owner
 
@@ -66,11 +68,11 @@ The D1 database exists already, with the schema applied and no data: `colab-exer
 2. **Read the privacy text** (`src/legal.ts`, shown at `/privacy`) and change what does not fit your situation. It describes what the code does; whether it is sufficient for your university is your call.
 3. **The schema is already applied** (26 November 2026): `migrations/0001_init.sql` is in the database and recorded in its `d1_migrations` table, so `npm run db:migrate:remote` (that is `wrangler d1 migrations apply colab-exercise --remote`) reports nothing to do. Later migrations are applied with that command, after `npx wrangler login`.
 4. **Deploy:** `npm run deploy` (wrangler builds the site first). The deployment changes from "static files only" to "static files plus a Worker for `/api/*`", and creates the daily cron trigger.
-5. **Check:** open the site: a "Sign in" button appears next to the theme button. Create a teacher account, a course and an assignment; in a private window create a student account, join with the code, submit. Then go through the [laptop checklist](#test-checklist-for-a-real-laptop).
+5. **Check:** open the site: the landing page shows "Sign in" next to the theme button, and "Create a teacher account" under the headline. Create a teacher account, a course and an assignment; in a private window create a student account, join with the code, submit. Then go through the [laptop checklist](#test-checklist-for-a-real-laptop).
 6. **Password resets.** Without an email binding, "Forgot your password?" tells people to write to `CONTROLLER_CONTACT`. You then run `npm run reset-link -- their@address --base=https://<the site>` and send them the link it prints (it works once, for 24 hours; send it only to the address of the account).
 7. **Optional: reset emails.** Needs a domain set up for Email Sending in the Cloudflare account. Then uncomment `send_email` in `wrangler.jsonc`, set `APP_URL` and `MAIL_FROM` under `vars`, and deploy again. This path has not been tested against the real email service.
 
-Pull-request previews do not get the database (on purpose: a preview must never touch real accounts). There the API answers 503 and the page is the playground only, without a sign-in button.
+Pull-request previews do not get the database (on purpose: a preview must never touch real accounts). There the API answers 503, the landing page shows no sign-in or sign-up control, and the app is the playground only.
 
 Not known from here, to check once: whether your Workers plan's CPU limit is enough. Signing in hashes the password with PBKDF2 (100,000 iterations) and a save parses up to 1 MB of JSON; both are small, but the free plan allows only 10 ms of CPU per request. If sign-in or saving fails with a CPU error in the Worker logs, the Workers Paid plan is the fix.
 
@@ -80,7 +82,7 @@ Not known from here, to check once: whether your Workers plan's CPU limit is eno
  Browser                                                        Cloudflare
  ──────────────────────────────────────────────────────         ─────────────────────────────────
  Page (main thread)                 Web Worker "python"          static assets (dist/, _headers)
- src/app.ts      header, views      src/runtime/worker.ts        index.html, courses.html, ...
+ src/app.ts      header, views      src/runtime/worker.ts        index.html, playground.html, ...
  src/views/*     notebook, course,    starts Pyodide,
                  assignment, ...      runs cells                 Worker (worker/index.ts): /api/*
  src/api.ts      talks to /api  ───────────────────────────────►   server/app.ts   the API (Hono)
@@ -93,7 +95,7 @@ Not known from here, to check once: whether your Workers plan's CPU limit is eno
 
 No UI framework: the pages are built with a few DOM helpers (`src/ui/dom.ts`). Messages between page and worker are listed in `src/runtime/protocol.ts`.
 
-**Addresses.** Every view has its own address: `/` (the playground, or "My courses" when signed in), `/playground`, `/courses`, `/course?id=…`, `/assignment?id=…`, `/starter?id=…`, `/submission?id=…&student=…`, `/account`, `/privacy`, `/reset`. Each one is a real file: the build copies `index.html` to `courses.html`, `course.html` and so on (`vite.config.ts`), and Cloudflare serves `/course` from `course.html`. So reload and back/forward work on every view without the Worker serving pages, and any other address is a real 404 (`404.html`). Which course or assignment is meant is in the query string; an id that does not exist gets the app's "Not found" page.
+**Addresses.** `/` is the landing page. Every view of the app has its own address: `/playground`, `/courses`, `/course?id=…`, `/assignment?id=…`, `/starter?id=…`, `/submission?id=…&student=…`, `/account`, `/privacy`, `/reset`. Each one is a real file: the site has three documents, `index.html` (the landing page), `app.html` (the app) and `404.html`, and the build writes `app.html` as `playground.html`, `courses.html`, `course.html` and so on (`vite.config.ts`); Cloudflare serves `/course` from `course.html`. So reload and back/forward work on every view without the Worker serving pages, and any other address is a real 404 (`404.html`). Which course or assignment is meant is in the query string; an id that does not exist gets the app's "Not found" page. In the app, the brand leads to "My courses" for somebody who is signed in and to the landing page for everybody else; signing out ends on the landing page.
 
 **The same API in two places.** `server/app.ts` runs on Cloudflare Workers with D1 (`worker/index.ts`) and on Node with SQLite (`server/server.ts`, through a D1-style interface in `server/db.ts`). Local development and the API tests use the Node side with the real migration file.
 
@@ -101,14 +103,28 @@ What loads from where:
 
 | What | From | Pinned version |
 |---|---|---|
-| The app (HTML, CSS, JS, the six notebooks, the `lab` sources, formula fonts) | this site | |
+| The landing page and the app (HTML, CSS, JS, the six notebooks, the `lab` sources, the fonts, the doodles) | this site | |
 | Accounts, courses, notebooks, submissions | this site's `/api` (same origin) | |
 | Pyodide (Python 3.14 as WebAssembly) and its packages (NumPy, ...) | `cdn.jsdelivr.net/pyodide/` | 314.0.8 |
 | Transformers.js (`@huggingface/transformers`), imported inside the worker on first use | `cdn.jsdelivr.net/npm/` | 4.3.2 |
 | The Hugging Face client (`@huggingface/inference`), imported by the page on first use | `cdn.jsdelivr.net/npm/` | 4.13.33 |
 | Model files | `huggingface.co` (cached by the browser) | set in each notebook |
 
-Bundled with the app (npm): CodeMirror 6, `marked`, DOMPurify, KaTeX, `fflate` (the zip of all submissions). The Worker: `hono`. Development only: Vite, TypeScript, vitest, jsdom, wrangler, `@hono/node-server`, and `pyodide` 314.0.8 (the exact version production loads from the CDN, used by the tests). Which address each runtime part loads from is decided in one file, `src/config.ts`.
+Bundled with the app (npm): CodeMirror 6, `marked`, DOMPurify, KaTeX, `fflate` (the zip of all submissions). The Worker: `hono`. Fonts, bundled from npm and served from this site: Fraunces and Caveat (see below). Development only: Vite, TypeScript, vitest, jsdom, wrangler, `@hono/node-server`, `roughjs` (draws the doodles), and `pyodide` 314.0.8 (the exact version production loads from the CDN, used by the tests). Which address each runtime part loads from is decided in one file, `src/config.ts`.
+
+### The landing page and the look
+
+**The look** is a lab notebook: paper, ink, a ballpoint, a highlighter, and the teacher's red pen. The colours are variables in `src/base.css`, which the landing page and the app share; dark is the same notebook on dark paper, and follows the system unless somebody presses the theme button (the choice is kept in the browser, and `public/theme.js` applies it before the first paint).
+
+- **Type.** Headings are set in [Fraunces](https://github.com/undercasetype/Fraunces), handwritten notes in [Caveat](https://github.com/googlefonts/caveat); body text and controls use the system's sans-serif, code its monospace. Both fonts are licensed under the **SIL Open Font License 1.1**. They come from the npm packages `@fontsource-variable/fraunces` and `@fontsource-variable/caveat` (latin subset only, one variable file each, `font-display: swap`) and are served from this site, as the Content-Security-Policy demands (`font-src 'self' data:`). Handwriting is used for notes and marks only, never for body text or controls and never below 18 px. Text in another script (a course name in Cyrillic, say) falls back to the system's fonts.
+- **Doodles.** Line drawings in ink with one or two accent colours. They are drawn by a script, `scripts/doodles.mjs`, from simple geometry that [rough.js](https://roughjs.com) (MIT) wobbles like a hand would, with fixed seeds, so the script always gives the same files. The files are committed (`src/doodles/*.svg`, about 30 kB in all); nothing is drawn in the browser. They are used as inline SVG: their ink is the text colour and their accents are classes, so they follow the theme. All of them are decoration (`aria-hidden`); the text next to a doodle says everything. The icon of the site (`public/favicon.svg`) is the brand mark from the same script.
+- **Motion.** One moment: on the landing page, the highlighter stroke and the three notes around the picture of the notebook draw themselves in once. With `prefers-reduced-motion` nothing moves.
+
+**The landing page** (`index.html`, `src/landing.css`, `src/landing.ts`) is a static document. When the site is built, a small Vite plugin replaces comments like `<!-- doodle:plane -->` with the SVG file. The picture of the notebook in the hero is HTML and CSS, not a screenshot; its code is from sample notebook 01. The page's script is about 4 kB: the theme button, and the account controls. It asks `/api/config` whether this deployment has accounts and looks whether this browser holds a session secret (only whether it is there). Without accounts no sign-in or sign-up control shows anywhere; signed out it shows "Sign in" and "Create an account"; signed in, "My courses". Those links lead into the app as `/courses?auth=signin` or `/courses?auth=signup` (`&role=teacher` chooses "teacher" in the form): the app opens its sign-in dialog and takes the request out of the address. "Try a notebook" is a plain link to `/playground` and needs no script.
+
+The landing page may be indexed by search engines; the app's pages and the 404 page carry `noindex`. Because the address of the site is not known in the repository, the page has no canonical link and its Open Graph tags have a title and a description but no image and no address.
+
+In the app, the same identity stays out of the way of the work: headings in Fraunces, the join code on a highlighted ticket, a released grade in red handwriting, course cards that look like exercise books, and a doodle where a page would otherwise be empty (no courses yet, no assignments yet, everything handed in, page not found). The notebook itself has no decoration.
 
 ### How Python and JavaScript talk
 
@@ -124,7 +140,7 @@ One migration, `migrations/0001_init.sql`. Times are UTC milliseconds. Notebooks
 
 | Table | Key columns | Notes |
 |---|---|---|
-| `users` | `id`, `email` (unique), `name`, `role`, `password_hash`, `created_at` | `role` is `teacher` or `student` and only shapes the home page |
+| `users` | `id`, `email` (unique), `name`, `role`, `password_hash`, `created_at` | `role` is `teacher` or `student` and only shapes "My courses" |
 | `sessions` | `token_hash` (key), `secret_hash`, `user_id`, `expires_at` | hashes of the cookie's token and of the header's secret; 30 days, extended while in use |
 | `password_resets` | `token_hash` (key), `user_id`, `expires_at` | single use; 60 minutes from an email, 24 hours from `reset-link` |
 | `rate_limits` | `key`, `count`, `reset_at` | fixed windows |
@@ -291,11 +307,11 @@ Notebooks 01 and 03 are handed out with the exercise unsolved, so their exercise
 
 None of the model paths could be run where this was built (no graphics card, no access to the CDNs or to Hugging Face). Please run this once in **Chrome or Edge** on a laptop with a graphics card, and once more on a machine without one if you can. Steps 1 to 16 are about the notebook engine and work in the playground, without an account; steps 17 to 20 are about accounts and need the deployed site (or `npm run dev`).
 
-Before you start: `npm install && npm run dev`, open the page (signed out, or "Playground" in the navigation), open DevTools (F12) on the Console tab, and note the browser version and the graphics card (`chrome://gpu`, or the output of notebook 00).
+Before you start: `npm install && npm run dev`, open the playground ("Try a notebook" on the start page, or "Playground" in the navigation), open DevTools (F12) on the Console tab, and note the browser version and the graphics card (`chrome://gpu`, or the output of notebook 00).
 
 | # | Do | Expect | Note down |
 |---|---|---|---|
-| 1 | Open the page. Run the first cell of **00**. | Status line: "Loading Python (Pyodide)…", then "Idle · Python 3.14… · graphics card available (WebGPU)". Output `Running in: emscripten`. | Seconds until the first output. Any red line in the console. |
+| 1 | Open the playground. Run the first cell of **00**. | Status line: "Loading Python (Pyodide)…", then "Idle · Python 3.14… · graphics card available (WebGPU)". Output `Running in: emscripten`. | Seconds until the first output. Any red line in the console. |
 | 2 | **00**, Run all. | NumPy loads ("Loading package numpy…"), `lab.device()` lists `webgpu: True` and an adapter, the check says *Check passed*, a grey picture with a circle appears. | The `adapter` line; `jspi`; `cross_origin_isolated` (should be False). |
 | 3 | **04**, Run all. | Four checks pass, three attention pictures. | Seconds for the whole notebook. |
 | 4 | **05**, Run all. | The loss settles near 0.7 (it starts near 2); "trained 4000 steps in … s"; scatter plots show two moons emerging from noise; three checks pass. | The training time it prints. |
@@ -328,7 +344,8 @@ Before you start: `npm install && npm run dev`, open the page (signed out, or "P
 | Session security | The attack described under "Security model", in the browser against the real Worker; malicious Markdown, stored HTML/SVG outputs, instructions and feedback: nothing runs. Pages and Pyodide run under the Content-Security-Policy of `public/_headers`, served by wrangler | The policy with the real CDN libraries (the ONNX runtime may need something more); a review by somebody else |
 | Database | The migration applies to an empty database statement by statement, and again; foreign keys; what deleting an account, a course, an assignment or an enrollment removes (SQLite and local D1) | Applying it to the remote database |
 | Downloads | Zip of all submissions (names sanitized and unique, contents checked after unzipping), CSV (formula escaping checked on a student named `=HYPERLINK(...)`), single notebooks | Opening the CSV in Excel |
-| Without a database | The real Worker without the D1 binding: the API answers 503, the page is the playground only, no sign-in button, no console errors | A real pull-request preview |
+| Without a database | The real Worker without the D1 binding: the API answers 503, the landing page shows no account control, the app is the playground only with no sign-in button, no console errors. The landing page also on a server without any API | A real pull-request preview |
+| Landing page | In Chromium under the Content-Security-Policy: no console errors; both fonts from this site and nothing from anywhere else; no chunk of the app requested; one `h1`; no sideways scrolling at 1280 and 390 px, light and dark; the right account controls signed out and signed in; "Try a notebook" and all six notebook links open the right notebook; sign-up and sign-in started from the landing page; no animation with reduced motion; tab order and visible focus | Real phones; Firefox and Safari; how it looks before the fonts have loaded on a slow connection; a screen reader |
 | Cron | `scheduled()` with a database runs the sweep; the sweep deletes exactly the expired rows (SQLite) | The trigger firing on Cloudflare |
 | Email | The reset email and its single-use link on the Node server (emails handed to the test); without the binding, the dialog names the contact and the link script works against local D1 | **Sending through Cloudflare's email service** (`send_email` is commented out; the call to the binding is written the way Cell by Cell's Worker makes it and has not run) |
 | Layout | Teacher home, course, assignment table, submission review, account, privacy, student home, course and assignment at 1280 and 390 px: nothing sticks out sideways; light and dark; tab order and visible focus on the course page; dialogs take and release the keyboard | A screen reader; real phones |
@@ -370,7 +387,12 @@ Before you start: `npm install && npm run dev`, open the page (signed out, or "P
 ## Repository layout
 
 ```
-index.html, src/          the app (TypeScript)
+index.html                the landing page ("/"); src/landing.ts, src/landing.css
+app.html, src/            the app (TypeScript); written as playground.html, courses.html, ... by the build
+404.html                  what an unknown address gets
+  src/base.css            colours, fonts, buttons, header and footer, shared by the landing page and the app
+  src/styles.css          the app's style sheet
+  src/doodles/            the doodles (SVG, drawn by scripts/doodles.mjs)
   src/app.ts              header, navigation, which view shows
   src/views/              notebook, courses, course, assignment, review, account, privacy
   src/api.ts, session.ts  the page's side of the API; who is signed in
@@ -381,13 +403,14 @@ shared/limits.ts          limits and rules that server and page both use
 server/                   the API (Hono), SQLite for local runs, rate limits, the daily sweep
 worker/index.ts           Cloudflare Workers entry
 migrations/               the D1 schema
-scripts/                  dev.mjs (API + Vite), reset-link.ts
+scripts/                  dev.mjs (API + Vite), reset-link.ts, doodles.mjs (draws the doodles and the icon)
 python/lab/               the lab package (Python, bundled into the worker)
 notebooks/                the six sample notebooks
 public/_headers           security headers for the pages and files
+public/theme.js           applies the chosen theme before the first paint
 wrangler.jsonc            Cloudflare: assets, Worker for /api/*, D1, cron
 tests/unit/               vitest: lab against Pyodide in Node, project checks (more tests sit next to the code in src/ and server/)
 tests/python/             the notebooks and the lab package under CPython
-tests/e2e/                the app in Chromium (Playwright), against the Node server and the Worker under wrangler dev
+tests/e2e/                the landing page and the app in Chromium (Playwright), against the Node server and the Worker under wrangler dev
 tests/stubs/              stand-ins for Transformers.js and the Hugging Face client
 ```

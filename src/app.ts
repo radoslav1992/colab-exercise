@@ -1,16 +1,19 @@
 /**
- * The page: the header (brand, navigation, account, theme), one view at a time, and the footer.
+ * The app: the header (brand, navigation, account, theme), one view at a time, and the footer.
  * Which view shows is decided by the address (src/router.ts) and by who is signed in.
  *
- * Signed out, or on a deployment without a database, the site is the playground: the notebook
- * page of the prototype, saved in this browser only.
+ * The start page of the site is not part of the app: "/" is the landing page (index.html,
+ * src/landing.ts). Signed out, or on a deployment without a database, the app is the playground:
+ * the notebook page with the sample notebooks, saved in this browser only.
  */
 import { api, ApiError, type User } from './api.ts'
 import { link, navigate, startRouter, type Route } from './router.ts'
 import { accountsAvailable, currentUser, loadSession, maybeSignedIn, onSessionChange } from './session.ts'
-import { savedTheme, saveTheme, type Theme } from './storage.ts'
-import { openAuthDialog } from './ui/auth.ts'
+import { samples } from './samples.ts'
+import { themeSwitch } from './theme.ts'
+import { openAuthDialog, type AuthMode } from './ui/auth.ts'
 import { el } from './ui/dom.ts'
+import { doodle, emptyState } from './ui/doodle.ts'
 import { takeFlash } from './ui/flash.ts'
 import { TeacherAssignmentPage } from './views/assignment.ts'
 import { CourseView } from './views/course.ts'
@@ -27,8 +30,12 @@ class ErrorView implements View {
 
   constructor(err: unknown, retry: () => void) {
     this.root.id = 'main'
-    document.title = `${err instanceof ApiError && err.status === 404 ? 'Not found' : 'Error'} · Notebook Lab`
-    this.root.append(...errorContent(err, retry))
+    const missing = err instanceof ApiError && err.status === 404
+    document.title = `${missing ? 'Not found' : 'Error'} · Notebook Lab`
+    const [heading, text, ...rest] = errorContent(err, retry)
+    // The same drawing as on the "Page not found" page.
+    if (missing) this.root.append(heading, emptyState('not-found', text.textContent ?? '', 'lost'), ...rest)
+    else this.root.append(heading, text, ...rest)
   }
 
   destroy(): void {
@@ -39,28 +46,33 @@ class ErrorView implements View {
 export class App {
   private readonly nav = el('nav', { class: 'site-nav' })
   private readonly tools = el('div', { class: 'site-tools' })
-  private readonly themeButton = el('button', { type: 'button', class: 'button' })
+  private readonly brand = el('a', { class: 'brand', href: '/' }, [doodle('mark'), el('span', {}, ['Notebook Lab'])])
+  private readonly themeButton = el('button', { type: 'button', class: 'button theme-button' })
   private readonly banner = el('p', { class: 'site-banner' })
   private readonly host = el('div', { class: 'view-host', id: 'content' })
   private view: View | null = null
   private viewKey = ''
-  private route: Route = { view: 'home' }
+  private route: Route = { view: 'playground' }
   private sessionReady = false
   private ticket = 0
   private navigated = false
 
   constructor(private readonly root: HTMLElement) {
     const skip = el('a', { class: 'skip-link', href: '#content' }, ['Skip to the content'])
-    const brand = link({ view: 'home' }, 'Notebook Lab', 'brand')
+    // The brand goes home: "My courses" inside the app for somebody who is signed in, the landing page (another document) for everybody else.
+    this.brand.addEventListener('click', (event) => {
+      if (!currentUser() || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      event.preventDefault()
+      navigate({ view: 'courses' })
+    })
     this.nav.setAttribute('aria-label', 'Site')
-    this.themeButton.addEventListener('click', () => this.toggleTheme())
-    const header = el('header', { class: 'site-header' }, [el('div', { class: 'site-header-inner' }, [brand, this.nav, this.tools])])
+    themeSwitch(this.themeButton)
+    const header = el('header', { class: 'site-header' }, [el('div', { class: 'site-header-inner' }, [this.brand, this.nav, this.tools])])
     this.banner.setAttribute('role', 'status')
     this.banner.hidden = true
     this.host.tabIndex = -1
     const footer = el('footer', { class: 'site-footer' }, [link({ view: 'privacy' }, 'Privacy'), el('span', {}, ['Notebook Lab runs notebooks in your browser. No analytics, no tracking.'])])
     this.root.append(skip, header, this.banner, this.host, footer)
-    this.applyTheme(savedTheme())
     this.renderHeader()
   }
 
@@ -70,6 +82,7 @@ export class App {
    * "Sign in"). Otherwise the page waits for the server to say who is signed in.
    */
   async start(): Promise<void> {
+    const wanted = takeAuthRequest()
     const signedOut = !maybeSignedIn()
     if (signedOut) startRouter((route) => this.show(route))
     await loadSession()
@@ -81,6 +94,8 @@ export class App {
     this.renderHeader()
     if (signedOut) this.show(this.route)
     else startRouter((route) => this.show(route))
+    // "Sign in" or "Create an account" on the landing page: the dialog opens over the page they lead to.
+    if (wanted && !currentUser() && accountsAvailable()) void openAuthDialog(wanted.mode, wanted.role)
   }
 
   // --- Header -----------------------------------------------------------------------------------
@@ -88,6 +103,7 @@ export class App {
   private renderHeader(): void {
     const user = currentUser()
     const current = this.route.view
+    this.brand.href = user ? '/courses' : '/'
     const item = (route: Route, text: string, active: boolean) => {
       const node = link(route, text)
       if (active) node.setAttribute('aria-current', 'page')
@@ -116,25 +132,6 @@ export class App {
     this.tools.append(this.themeButton)
   }
 
-  private effectiveTheme(): Theme {
-    const set = document.documentElement.dataset.theme
-    if (set === 'light' || set === 'dark') return set
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-
-  private applyTheme(theme: Theme | null): void {
-    if (theme) document.documentElement.dataset.theme = theme
-    const now = this.effectiveTheme()
-    this.themeButton.textContent = now === 'dark' ? 'Light' : 'Dark'
-    this.themeButton.setAttribute('aria-label', now === 'dark' ? 'Switch to the light theme' : 'Switch to the dark theme')
-  }
-
-  private toggleTheme(): void {
-    const next: Theme = this.effectiveTheme() === 'dark' ? 'light' : 'dark'
-    saveTheme(next)
-    this.applyTheme(next)
-  }
-
   // --- Views ------------------------------------------------------------------------------------
 
   /** Show the view for an address. Does nothing if that view is already showing. */
@@ -147,27 +144,26 @@ export class App {
       if (!user) return [`sign-in:${accountsAvailable()}`, signInView]
       return [`${key}:${user.id}`, () => make(user)]
     }
-    const playground = (): View => {
-      const view = new NotebookView({ mode: 'playground' })
-      void view.start()
-      return view
-    }
-
     let key: string
     let make: () => View | Promise<View>
     switch (route.view) {
-      case 'home':
-        // Home is "My courses" for somebody who is signed in, and the playground for everybody else.
-        if (user) {
-          navigate({ view: 'courses' }, { replace: true })
-          return
+      case 'playground': {
+        // "/playground?sample=03-llm-tokens-and-sampling" opens that sample, if there is one. The
+        // address then becomes "/playground": which notebook is open is remembered by the browser.
+        const sample = route.sample ? samples.find((s) => s.file === `${route.sample}.ipynb`) : undefined
+        if (route.sample) {
+          window.history.replaceState(null, '', '/playground')
+          this.route = { view: 'playground' }
+          if (sample) this.viewKey = ''
         }
-        if (!this.sessionReady && maybeSignedIn()) [key, make] = ['loading', loadingView]
-        else [key, make] = ['playground', playground]
+        key = 'playground'
+        make = () => {
+          const view = new NotebookView({ mode: 'playground', open: sample?.file })
+          void view.start()
+          return view
+        }
         break
-      case 'playground':
-        ;[key, make] = ['playground', playground]
-        break
+      }
       case 'courses':
         ;[key, make] = needsAccount('courses', (u) => new CoursesView(u))
         break
@@ -263,4 +259,22 @@ export class App {
     this.view = view
     this.host.replaceChildren(view.root)
   }
+}
+
+/**
+ * The landing page links to "/courses?auth=signin" and "/courses?auth=signup" (with "&role=teacher"
+ * for a teacher). The request is taken out of the address at once, so that a reload or the back
+ * button does not open the dialog again.
+ */
+function takeAuthRequest(): { mode: AuthMode; role?: 'teacher' | 'student' } | null {
+  const query = new URLSearchParams(window.location.search)
+  const mode = query.get('auth')
+  if (mode === null) return null
+  const role = query.get('role')
+  query.delete('auth')
+  query.delete('role')
+  const rest = query.toString()
+  window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+  if (mode !== 'signin' && mode !== 'signup') return null
+  return { mode, role: role === 'teacher' || role === 'student' ? role : undefined }
 }

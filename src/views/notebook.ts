@@ -43,6 +43,8 @@ export type SaveKind = 'saved' | 'pending' | 'partial' | 'failed' | 'offline' | 
 
 export interface NotebookOptions {
   mode: 'playground' | 'remote' | 'review'
+  /** playground: the file name of the sample notebook to open, instead of the one that was open last. */
+  open?: string
   /** Shown where the playground has its menu of notebooks. */
   heading?: string
   /** "Open" and drag and drop replace the notebook with a file from this device. */
@@ -380,6 +382,8 @@ export class NotebookView implements CellHost, View {
 
   /** Playground, first load: the notebook that was open last time, else the first sample. */
   async start(): Promise<void> {
+    const wanted = this.options.open
+    if (wanted && samples.some((s) => s.file === wanted)) return this.openDoc(`sample:${wanted}`)
     const last = currentDocId()
     const known = last && (last === FILE_DOC ? loadDoc(FILE_DOC) !== null : samples.some((s) => `sample:${s.file}` === last))
     await this.openDoc(known ? last : `sample:${samples[0].file}`)

@@ -10,6 +10,7 @@ import { loadSample, samples } from '../samples.ts'
 import { currentDocId, loadDoc } from '../storage.ts'
 import { confirmDialog } from '../ui/confirm.ts'
 import { button, el, field, formatDate, formatDateTime, formatNumber, fromLocalInput, messageBox, uid } from '../ui/dom.ts'
+import { emptyState } from '../ui/doodle.ts'
 import { setFlash } from '../ui/flash.ts'
 import { describeDropped } from '../notebook/fit.ts'
 import { badge, crumbs, errorText, Page, table } from './page.ts'
@@ -79,13 +80,15 @@ export class CourseView extends Page {
         }),
       'button danger',
     )
+    const allDone = assignments.length > 0 && assignments.every((a) => a.status === 'submitted' || a.status === 'late')
     return [
       ...this.head(course, `Teacher: ${course.teacher}`),
       el('section', { class: 'page-section' }, [
         el('h2', {}, ['Assignments']),
         assignments.length > 0
           ? table('Assignments', ['Assignment', 'Due', 'Status', 'Grade'], rows)
-          : el('p', { class: 'empty' }, ['No assignments yet. They appear here when your teacher publishes them.']),
+          : emptyState('no-assignments', 'No assignments yet. They appear here when your teacher publishes them.'),
+        allDone ? emptyState('all-done', assignments.length === 1 ? 'You handed it in. Nothing is waiting for you here.' : 'You handed everything in. Nothing is waiting for you here.', 'done') : null,
       ]),
       el('section', { class: 'page-section' }, [el('h2', {}, ['Leave']), el('p', {}, ['Leaving removes you from the course and deletes your work in it.']), leave]),
     ]
@@ -141,7 +144,7 @@ export class CourseView extends Page {
       el('h2', {}, ['Assignments']),
       assignments.length > 0
         ? table('Assignments', ['Assignment', 'State', 'Due', 'Submitted', 'Graded'], assignmentRows)
-        : el('p', { class: 'empty' }, ['No assignments yet. An assignment is a notebook that every student gets their own copy of.']),
+        : emptyState('no-assignments', 'No assignments yet. An assignment is a notebook that every student gets their own copy of.'),
       newAssignment,
     ])
 

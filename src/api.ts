@@ -11,8 +11,8 @@
  * Cache Storage, a BroadcastChannel or an address, and requests go to this site's own /api/ only.
  */
 import { SESSION_HEADER, type AssignmentState, type Role, type StudentStatus } from '../shared/limits.ts'
+import { SECRET_KEY } from './keys.ts'
 
-const SECRET_KEY = 'notebook-lab:session-secret'
 /** In memory too, for browsers whose storage is blocked: the session then lasts until the tab is closed. */
 let memorySecret: string | null = null
 

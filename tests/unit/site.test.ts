@@ -1,14 +1,17 @@
 /**
- * The pieces around the app: addresses of the views, the static server that stands in for
- * Cloudflare's assets, the Worker without a database, the Cloudflare configuration and the privacy text.
+ * The pieces around the app: addresses of the views, the landing page and the doodles, the static
+ * server that stands in for Cloudflare's assets, the Worker without a database, the Cloudflare
+ * configuration and the privacy text.
  */
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createStatic } from '../../server/static.ts'
 import { CONTROLLER_PLACEHOLDER, privacySections, RESET_MINUTES, SESSION_DAYS } from '../../src/legal.ts'
 import { hrefFor, PAGES, parseRoute, type Route } from '../../src/router.ts'
+import { samples } from '../../src/samples.ts'
 import { RESET_MINUTES as SERVER_RESET_MINUTES, SESSION_DAYS as SERVER_SESSION_DAYS } from '../../server/app.ts'
 import worker from '../../worker/index.ts'
 import { parseJsonc } from '../e2e/worker.mjs'
@@ -19,6 +22,7 @@ const OTHER = 'zyxwvutsrq9876543210'
 describe('addresses of the views', () => {
   const routes: Route[] = [
     { view: 'playground' },
+    { view: 'playground', sample: '03-llm-tokens-and-sampling' },
     { view: 'courses' },
     { view: 'course', id: ID },
     { view: 'assignment', id: ID },
@@ -34,8 +38,25 @@ describe('addresses of the views', () => {
       const url = new URL(hrefFor(route), 'https://lab.test')
       expect(parseRoute(url), hrefFor(route)).toEqual(route)
     }
-    expect(parseRoute({ pathname: '/', search: '' })).toEqual({ view: 'home' })
     expect(parseRoute({ pathname: '/courses/', search: '' })).toEqual({ view: 'courses' })
+    // Where the landing page sends somebody to sign in: the request is not part of the view.
+    expect(parseRoute({ pathname: '/courses', search: '?auth=signup&role=teacher' })).toEqual({ view: 'courses' })
+  })
+
+  it('has no view for the start page: "/" is the landing page, a document of its own', () => {
+    expect(parseRoute({ pathname: '/', search: '' })).toEqual({ view: 'not-found' })
+    expect(PAGES).not.toContain('index')
+    expect(PAGES).not.toContain('app')
+  })
+
+  it('takes the name of a sample from the address only if it looks like one', () => {
+    for (const sample of samples) {
+      const name = sample.file.replace(/\.ipynb$/, '')
+      expect(parseRoute({ pathname: '/playground', search: `?sample=${name}` })).toEqual({ view: 'playground', sample: name })
+    }
+    for (const search of ['?sample=', '?sample=../01-speech-to-text', '?sample=01-speech-to-text.ipynb', '?sample=%3Cscript%3E', '?sample=A', `?sample=${'a'.repeat(80)}`, '?other=1']) {
+      expect(parseRoute({ pathname: '/playground', search }), search).toEqual({ view: 'playground' })
+    }
   })
 
   it('has a page file for every address, so that reload works and anything else is a real 404', () => {
@@ -51,6 +72,92 @@ describe('addresses of the views', () => {
     expect(parseRoute({ pathname: '/submission', search: `?id=${ID}` })).toEqual({ view: 'not-found' })
     expect(parseRoute({ pathname: '/submission', search: `?id=${ID}&student=nope` })).toEqual({ view: 'not-found' })
     expect(parseRoute({ pathname: '/admin', search: '' })).toEqual({ view: 'not-found' })
+  })
+})
+
+describe('the landing page and the other documents', () => {
+  const landing = readFileSync('index.html', 'utf8')
+  const app = readFileSync('app.html', 'utf8')
+  const missing = readFileSync('404.html', 'utf8')
+
+  it('links every topic to a sample notebook that exists, and all six are there', () => {
+    const linked = [...landing.matchAll(/href="\/playground\?sample=([^"]+)"/g)].map((match) => `${match[1]}.ipynb`)
+    expect(linked.sort()).toEqual(samples.map((sample) => sample.file).sort())
+  })
+
+  it('may be indexed and describes itself; the app and the 404 page stay out of search engines', () => {
+    expect(landing).not.toContain('noindex')
+    expect(landing).toMatch(/<title>[^<]{20,70}<\/title>/)
+    for (const name of ['name="description"', 'property="og:title"', 'property="og:description"']) expect(landing).toContain(name)
+    expect(landing.match(/<h1[\s>]/g)).toHaveLength(1)
+    // The domain of the site is not known: nothing absolute.
+    expect(landing).not.toMatch(/(?:href|src|content)="https?:/)
+    expect(landing).not.toContain('rel="canonical"')
+    expect(app).toContain('<meta name="robots" content="noindex" />')
+    expect(missing).toContain('<meta name="robots" content="noindex" />')
+  })
+
+  it('has no inline script and no inline event handler, as the Content-Security-Policy demands', () => {
+    for (const html of [landing, app, missing]) {
+      expect(html).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/)
+      expect(html).not.toMatch(/\son[a-z]+=/)
+    }
+  })
+
+  it('shows no account control until the script knows that there are accounts', () => {
+    const controls = [...landing.matchAll(/<(a|p)\b[^>]*data-account="(in|out)"[^>]*>/g)]
+    expect(controls.length).toBeGreaterThanOrEqual(6)
+    for (const [tag] of controls) expect(tag, tag).toMatch(/\shidden>$/)
+    // Every link that signs somebody in or up is one of those controls, or inside one.
+    const links = [...landing.matchAll(/<a\b[^>]*href="\/courses[^"]*"[^>]*>/g)].map(([tag]) => tag)
+    const outside = links.filter((tag) => !tag.includes('data-account='))
+    expect(outside).toEqual(['<a class="button primary" href="/courses?auth=signup&amp;role=teacher">'])
+    expect(landing).toMatch(/<p class="calls" data-account="out" hidden>\s*<a class="button primary" href="\/courses\?auth=signup&amp;role=teacher">/)
+  })
+
+  it('applies a chosen theme before the first paint, with the key the app saves it under', () => {
+    const script = readFileSync('public/theme.js', 'utf8')
+    expect(script).toContain("localStorage.getItem('notebook-lab:theme')")
+    expect(readFileSync('src/storage.ts', 'utf8')).toContain('const THEME = `${PREFIX}theme`')
+    for (const html of [landing, app, missing]) expect(html).toContain('<script src="/theme.js"></script>')
+  })
+
+  it('only asks for doodles that exist', () => {
+    const drawn = readdirSync('src/doodles').map((file) => file.replace('.svg', ''))
+    for (const html of [landing, missing]) {
+      const asked = [...html.matchAll(/<!-- doodle:([a-z0-9-]+)/g)].map((match) => match[1])
+      expect(asked.length).toBeGreaterThan(0)
+      for (const name of asked) expect(drawn, name).toContain(name)
+    }
+  })
+})
+
+describe('the doodles', () => {
+  const files = readdirSync('src/doodles').filter((file) => file.endsWith('.svg'))
+
+  it('are drawn by scripts/doodles.mjs, and drawing them again gives the same files', () => {
+    const out = mkdtempSync(join(tmpdir(), 'notebook-lab-doodles-'))
+    execFileSync(process.execPath, ['scripts/doodles.mjs'], { env: { ...process.env, DOODLES_OUT: out }, stdio: 'pipe' })
+    expect(readdirSync(out).filter((file) => file !== 'favicon.svg').sort()).toEqual([...files].sort())
+    for (const file of files) expect(readFileSync(join(out, file), 'utf8'), file).toBe(readFileSync(join('src/doodles', file), 'utf8'))
+    expect(readFileSync(join(out, 'favicon.svg'), 'utf8')).toBe(readFileSync('public/favicon.svg', 'utf8'))
+  })
+
+  it('are decoration in ink: hidden from screen readers, no colour of their own, no script, light', () => {
+    let total = 0
+    for (const file of files) {
+      const svg = readFileSync(join('src/doodles', file), 'utf8')
+      total += svg.length
+      expect(svg, file).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" class="doodle doodle-[a-z0-9-]+" viewBox="0 0 \d+ \d+"/)
+      expect(svg, file).toContain('stroke="currentColor"')
+      expect(svg, file).toContain('aria-hidden="true"')
+      // Colours come from the theme (classes in src/base.css), so that the doodles work on dark paper.
+      expect(svg, file).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|style=|<script|href=/i)
+      // One decimal place at most.
+      expect(svg, file).not.toMatch(/\d\.\d{2,}/)
+      expect(svg.length, file).toBeLessThan(6_000)
+    }
+    expect(total).toBeLessThan(45_000)
   })
 })
 
