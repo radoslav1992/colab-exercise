@@ -21,6 +21,7 @@
     "db:migrate:local": "wrangler d1 migrations apply colab-exercise --local",
     "db:migrate:remote": "wrangler d1 migrations apply colab-exercise --remote",
     "reset-link": "node scripts/reset-link.ts",
+    "doodles": "node scripts/doodles.mjs",
     "deploy": "wrangler deploy"
   },
   "engines": {
@@ -41,9 +42,12 @@
     "marked": "^18.3.0"
   },
   "devDependencies": {
+    "@fontsource-variable/caveat": "^5.3.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
     "@types/node": "^22.20.7",
     "jsdom": "^31.0.1",
     "pyodide": "314.0.8",
+    "roughjs": "^4.6.6",
     "typescript": "^5.9.3",
     "vite": "^7.3.8",
     "vitest": "^5.1.2",
