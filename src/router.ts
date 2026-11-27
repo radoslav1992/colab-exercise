@@ -1,13 +1,16 @@
 /**
- * Addresses of the views. Each view is a real file on the server (index.html is copied to
- * courses.html, course.html, ... when the site is built, see vite.config.ts), so reload and
- * back/forward work everywhere and an unknown address is a real 404. Which course or assignment a
- * view shows is in the query string.
+ * Addresses of the views of the app. Each view is a real file on the server (app.html is written
+ * as playground.html, courses.html, course.html, ... when the site is built, see vite.config.ts),
+ * so reload and back/forward work everywhere and an unknown address is a real 404. Which course
+ * or assignment a view shows is in the query string.
+ *
+ * The start page "/" is not a view of the app: it is the landing page, a document of its own
+ * (index.html), and a link to it loads that document.
  */
 
 export type Route =
-  | { view: 'home' }
-  | { view: 'playground' }
+  /** `sample` opens one of the sample notebooks: its file name without ".ipynb" (src/samples.ts). */
+  | { view: 'playground'; sample?: string }
   | { view: 'courses' }
   | { view: 'course'; id: string }
   | { view: 'assignment'; id: string }
@@ -18,20 +21,22 @@ export type Route =
   | { view: 'reset' }
   | { view: 'not-found' }
 
-/** The pages besides index.html that the build writes. Keep in step with `parseRoute`. */
+/** The pages of the app, which the build writes next to index.html. Keep in step with `parseRoute`. */
 export const PAGES = ['playground', 'courses', 'course', 'assignment', 'starter', 'submission', 'account', 'privacy', 'reset'] as const
 
 const ID = /^[a-z0-9]{20}$/
+/** The shape of a sample's name. Whether there is such a sample is decided where the list is (src/app.ts). */
+const SAMPLE = /^[a-z0-9][a-z0-9-]{0,60}$/
 
 export function parseRoute(location: { pathname: string; search: string }): Route {
   const path = location.pathname.replace(/\/+$/, '') || '/'
   const query = new URLSearchParams(location.search)
   const id = query.get('id') ?? ''
   switch (path) {
-    case '/':
-      return { view: 'home' }
-    case '/playground':
-      return { view: 'playground' }
+    case '/playground': {
+      const sample = query.get('sample') ?? ''
+      return SAMPLE.test(sample) ? { view: 'playground', sample } : { view: 'playground' }
+    }
     case '/courses':
       return { view: 'courses' }
     case '/course':
@@ -57,9 +62,10 @@ export function parseRoute(location: { pathname: string; search: string }): Rout
 
 export function hrefFor(route: Route): string {
   switch (route.view) {
-    case 'home':
     case 'not-found':
       return '/'
+    case 'playground':
+      return route.sample ? `/playground?sample=${route.sample}` : '/playground'
     case 'course':
     case 'assignment':
     case 'starter':

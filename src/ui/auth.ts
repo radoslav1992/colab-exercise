@@ -3,8 +3,10 @@ import { LIMITS, type Role } from '../../shared/limits.ts'
 import { api, ApiError } from '../api.ts'
 import { signIn, signUp, siteConfig } from '../session.ts'
 import { el, field, messageBox, uid } from './dom.ts'
+import { doodle } from './doodle.ts'
 
 type Mode = 'signin' | 'signup' | 'forgot'
+export type AuthMode = 'signin' | 'signup'
 
 const TITLES: Record<Mode, string> = {
   signin: 'Sign in',
@@ -14,8 +16,8 @@ const TITLES: Record<Mode, string> = {
 
 let open = false
 
-/** Open the dialog. Resolves true when somebody is signed in afterwards. */
-export function openAuthDialog(start: Mode = 'signin'): Promise<boolean> {
+/** Open the dialog. `role` is the choice "I am a ..." that sign-up starts with. Resolves true when somebody is signed in afterwards. */
+export function openAuthDialog(start: Mode = 'signin', role: Role = 'student'): Promise<boolean> {
   if (open) return Promise.resolve(false)
   open = true
   return new Promise((resolve) => {
@@ -27,13 +29,13 @@ export function openAuthDialog(start: Mode = 'signin'): Promise<boolean> {
     const name = field('Your name', el('input', { type: 'text', autocomplete: 'name', maxLength: LIMITS.name }), 'As your teacher or your students should see it.')
     const email = field('Email', el('input', { type: 'email', autocomplete: 'username', inputMode: 'email', spellcheck: false }))
     const password = field('Password', el('input', { type: 'password', autocomplete: 'current-password' }))
-    const teacher = el('input', { type: 'radio', name: 'auth-role', value: 'teacher', id: uid('role') })
-    const student = el('input', { type: 'radio', name: 'auth-role', value: 'student', id: uid('role'), checked: true })
-    const role = el('fieldset', { class: 'field choice' }, [
+    const teacher = el('input', { type: 'radio', name: 'auth-role', value: 'teacher', id: uid('role'), checked: role === 'teacher' })
+    const student = el('input', { type: 'radio', name: 'auth-role', value: 'student', id: uid('role'), checked: role !== 'teacher' })
+    const roleField = el('fieldset', { class: 'field choice' }, [
       el('legend', {}, ['I am a']),
       el('label', { htmlFor: student.id }, [student, ' student']),
       el('label', { htmlFor: teacher.id }, [teacher, ' teacher']),
-      el('p', { class: 'field-help' }, ['This only decides what your home page shows first. You can teach some courses and be a student in others.']),
+      el('p', { class: 'field-help' }, ['This only decides what "My courses" shows first. You can teach some courses and be a student in others.']),
     ])
     const error = messageBox('error')
     const status = messageBox('status')
@@ -44,12 +46,12 @@ export function openAuthDialog(start: Mode = 'signin'): Promise<boolean> {
     const toForgot = el('button', { type: 'button', class: 'link-button' }, ['Forgot your password?'])
     const switches = el('p', { class: 'dialog-switch' }, [toSignup, toSignin, toForgot])
     const form = el('form', { method: 'dialog', noValidate: true }, [
-      title,
+      el('div', { class: 'dialog-head' }, [title, doodle('plane')]),
       intro,
       name.row,
       email.row,
       password.row,
-      role,
+      roleField,
       error,
       status,
       el('div', { class: 'dialog-buttons' }, [cancel, submit]),
@@ -65,7 +67,7 @@ export function openAuthDialog(start: Mode = 'signin'): Promise<boolean> {
       error.textContent = ''
       status.textContent = ''
       name.row.hidden = mode !== 'signup'
-      role.hidden = mode !== 'signup'
+      roleField.hidden = mode !== 'signup'
       password.row.hidden = mode === 'forgot'
       email.row.hidden = forgotByHand
       submit.hidden = forgotByHand

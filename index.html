@@ -1,17 +1,240 @@
 <!doctype html>
+<!--
+  The landing page at "/": a document of its own, with its content in the HTML. It loads a small
+  script (src/landing.ts) and none of the app. Doodles are written in when the site is built
+  (the comments "doodle:name", see vite.config.ts).
+-->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Course notebooks that run in your browser: Python with Pyodide, models on your own graphics card." />
-    <meta name="robots" content="noindex" />
+    <title>Notebook Lab: course notebooks for AI that run in the browser</title>
+    <meta
+      name="description"
+      content="A teacher hands out an assignment as a notebook. Students run Python and small AI models in a browser tab on their own computer and hand in. Nothing to install."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Notebook Lab" />
+    <meta property="og:title" content="Notebook Lab: course notebooks for AI that run in the browser" />
+    <meta
+      property="og:description"
+      content="A teacher hands out an assignment as a notebook. Students run Python and small AI models in a browser tab on their own computer and hand in. Nothing to install."
+    />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>Notebook Lab</title>
+    <link rel="preload" href="/node_modules/@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/node_modules/@fontsource-variable/caveat/files/caveat-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/src/landing.css" />
+    <script src="/theme.js"></script>
+    <script type="module" src="/src/landing.ts"></script>
   </head>
-  <body>
-    <div id="app"></div>
-    <noscript>This page runs Python notebooks in your browser and needs JavaScript.</noscript>
-    <script type="module" src="/src/main.ts"></script>
+  <body class="landing">
+    <a class="skip-link" href="#content">Skip to the content</a>
+
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a class="brand" href="/" aria-current="page"><!-- doodle:mark --><span>Notebook Lab</span></a>
+        <nav class="site-nav" aria-label="Site">
+          <a href="/playground">Playground</a>
+          <a href="#teachers">For teachers</a>
+        </nav>
+        <div class="site-tools">
+          <!-- The account controls stay hidden until the script knows that this site has accounts (src/landing.ts). -->
+          <a class="button" href="/courses?auth=signin" data-account="out" hidden>Sign in</a>
+          <a class="button" href="/courses" data-account="in" hidden>My courses</a>
+          <button type="button" class="button theme-button" id="theme-button" hidden>Dark</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="content" tabindex="-1">
+      <section class="hero">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <h1>Course notebooks for AI that run <span class="marked">in the browser<!-- doodle:swash draw --></span>.</h1>
+            <p class="lede">
+              A teacher hands out an assignment as a notebook. Students run Python and real models in a browser tab on their own computer, and the teacher gets
+              every submission in one table.
+            </p>
+            <p class="calls">
+              <a class="button primary big" href="/playground">Try a notebook</a>
+              <a class="button big" href="/courses?auth=signup&amp;role=teacher" data-account="out" hidden>Create a teacher account</a>
+              <a class="button big" href="/courses" data-account="in" hidden>My courses</a>
+            </p>
+            <p class="hero-aside">The playground needs no account. Nothing to install.</p>
+          </div>
+
+          <div class="hero-visual">
+            <div class="mock" role="img" aria-label="A notebook in the browser: a code cell loads a speech recognition model with the lab package and prints what it heard; below it, a check cell says “Check passed”.">
+              <div class="mock-bar">
+                <span class="mock-name">01-speech-to-text.ipynb</span>
+                <span class="mock-status"><i></i>graphics card available (WebGPU)</span>
+              </div>
+              <p class="mock-text"><b>3. Transcribe.</b> Calling the pipeline returns a dict with the key <code>"text"</code>.</p>
+              <div class="mock-cell">
+                <div class="mock-side"><span class="mock-run"></span><span>[3]</span></div>
+                <div class="mock-body">
+                  <pre class="mock-code">asr = <span class="tk">await</span> lab.pipeline(
+    <span class="ts">"automatic-speech-recognition"</span>,
+    MODEL, device=DEVICE)
+result = <span class="tk">await</span> asr(audio)
+<span class="tb">print</span>(result[<span class="ts">"text"</span>])</pre>
+                  <pre class="mock-out"> And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.</pre>
+                </div>
+              </div>
+              <div class="mock-cell is-check">
+                <div class="mock-side"><span class="mock-run"></span><span>[4]</span></div>
+                <div class="mock-body">
+                  <pre class="mock-code"><span class="tk">assert</span> word_error_rate(
+    <span class="ts">"a b c d"</span>, <span class="ts">"a x c d"</span>) == <span class="tn">0.25</span></pre>
+                  <p class="mock-check"><!-- doodle:tick -->Check passed</p>
+                </div>
+              </div>
+            </div>
+            <ul class="notes">
+              <li class="note note-1"><!-- doodle:arrow-1 draw --><!-- doodle:arrow-short draw --><span>Python, right in the tab</span></li>
+              <li class="note note-2"><!-- doodle:arrow-2 draw --><!-- doodle:arrow-short draw --><span>the model runs on your graphics card</span></li>
+              <li class="note note-3"><!-- doodle:arrow-3 draw --><!-- doodle:arrow-short draw --><span>checks say when you got it</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="band topics" aria-labelledby="topics-title">
+        <div class="band-inner">
+          <header class="band-head">
+            <h2 id="topics-title">What students can run</h2>
+            <p>
+              Six sample notebooks come with the site. Open one in the playground, run it, change it. What you change stays in your browser.
+            </p>
+          </header>
+          <ul class="topic-list">
+            <li class="topic">
+              <!-- doodle:speech-to-text -->
+              <h3><a href="/playground?sample=01-speech-to-text"><span class="topic-number">01</span> Speech to text</a></h3>
+              <p>Whisper tiny transcribes a recording, then your own voice from the microphone. The exercise: write the word error rate.</p>
+            </li>
+            <li class="topic">
+              <!-- doodle:text-to-speech -->
+              <h3><a href="/playground?sample=02-text-to-speech"><span class="topic-number">02</span> Text to speech</a></h3>
+              <p>SpeechT5 turns a sentence into sound, in the voice a speaker embedding describes. Play it, and draw its waveform.</p>
+            </li>
+            <li class="topic">
+              <!-- doodle:language-model -->
+              <h3><a href="/playground?sample=03-llm-tokens-and-sampling"><span class="topic-number">03</span> A language model, one token at a time</a></h3>
+              <p>Tokens and the probabilities of the next one, from DistilGPT-2. The exercise: sampling with temperature and top-k.</p>
+            </li>
+            <li class="topic">
+              <!-- doodle:attention -->
+              <h3><a href="/playground?sample=04-attention-from-scratch"><span class="topic-number">04</span> Attention from scratch</a></h3>
+              <p>Scaled dot-product attention, the causal mask and multi-head attention in NumPy, each step with a check.</p>
+            </li>
+            <li class="topic">
+              <!-- doodle:diffusion -->
+              <h3><a href="/playground?sample=05-diffusion-toy"><span class="topic-number">05</span> Diffusion on toy data</a></h3>
+              <p>A diffusion model for points in the plane, in plain NumPy: add noise, train a small network, sample.</p>
+            </li>
+            <li class="topic topic-first">
+              <!-- doodle:sparkle -->
+              <p class="hand">start here</p>
+              <h3><a href="/playground?sample=00-check-your-setup"><span class="topic-number">00</span> Check your setup</a></h3>
+              <p>The first notebook shows what your browser offers: Python, NumPy, and whether models can use the graphics card.</p>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="band steps" id="teachers" aria-labelledby="teachers-title">
+        <div class="band-inner">
+          <header class="band-head">
+            <h2 id="teachers-title">How it works for a teacher</h2>
+            <p>A course, a join code, and assignments that are ordinary notebooks.</p>
+          </header>
+          <ol class="step-list">
+            <li class="step">
+              <!-- doodle:file -->
+              <h3>Set an assignment from an <code>.ipynb</code></h3>
+              <p>Upload a notebook, start from a sample, or begin with an empty one. Add instructions, a due date and points, and publish when it is ready.</p>
+            </li>
+            <li class="step">
+              <!-- doodle:join-code -->
+              <h3>Share the join code</h3>
+              <p>Every course has a code of eight letters and digits. Students create an account and join with it.</p>
+            </li>
+            <li class="step">
+              <!-- doodle:laptop -->
+              <h3>Students work in the browser and hand in</h3>
+              <p>Each student gets a copy that is saved while they type. Submitting stores a snapshot with the server’s time, and marks it late after the due time.</p>
+            </li>
+            <li class="step">
+              <!-- doodle:grade -->
+              <h3>Open, run, grade, release</h3>
+              <p>One table shows who started and who submitted. Open a submission, run its cells, give a grade and feedback. Students see them when you release them.</p>
+            </li>
+          </ol>
+          <p class="calls" data-account="out" hidden>
+            <a class="button primary" href="/courses?auth=signup&amp;role=teacher">Create a teacher account</a>
+            <span>No confirmation email is sent, so you can start at once.</span>
+          </p>
+        </div>
+      </section>
+
+      <section class="band facts" aria-labelledby="facts-title">
+        <div class="band-inner facts-inner">
+          <div class="facts-main">
+            <h2 id="facts-title"><span class="underlined">Plain facts<!-- doodle:squiggle --></span></h2>
+            <dl class="fact-list">
+              <div>
+                <dt><!-- doodle:tick -->Nothing to install</dt>
+                <dd>A notebook opens in a browser tab. Python itself (a build called Pyodide) is downloaded into the tab the first time a cell runs.</dd>
+              </div>
+              <div>
+                <dt><!-- doodle:tick -->The code runs on the student’s computer</dt>
+                <dd>The server stores accounts, courses, notebooks, submissions and grades. It never runs anybody’s code.</dd>
+              </div>
+              <div>
+                <dt><!-- doodle:tick --><code>.ipynb</code> in, <code>.ipynb</code> out</dt>
+                <dd>Open a notebook from Jupyter or Colab, and download it again. Cells, tags and outputs survive the round trip.</dd>
+              </div>
+              <div>
+                <dt><!-- doodle:tick -->Models from Hugging Face</dt>
+                <dd>They run in the tab, on the graphics card with WebGPU. Without one they fall back to the processor: everything still works, only slower.</dd>
+              </div>
+            </dl>
+          </div>
+          <aside class="limits" aria-labelledby="limits-title">
+            <h3 id="limits-title"><span class="underlined">And the limits<!-- doodle:underline --></span></h3>
+            <ul>
+              <li><b>Small models.</b> Tens to a few hundred megabytes, and every student downloads each one once.</li>
+              <li><b>No PyTorch.</b> Notebooks use NumPy and the course’s small <code>lab</code> package. Pretrained models can be run, not fine-tuned.</li>
+              <li><b>A recent browser</b> for the graphics card: Chrome or Edge.</li>
+              <li><b>Checks are a hint.</b> They run in the student’s browser, so the number a submission reports can be faked.</li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section class="band join" aria-labelledby="join-title" data-needs-accounts>
+        <div class="band-inner join-inner">
+          <div>
+            <p class="hand">for students</p>
+            <h2 id="join-title">Got a join code?</h2>
+            <p>Your teacher gave you eight letters and digits. Create an account, or sign in, and enter the code under “My courses”.</p>
+            <p class="calls">
+              <a class="button primary" href="/courses?auth=signup" data-account="out" hidden>Create an account</a>
+              <a class="button" href="/courses?auth=signin" data-account="out" hidden>Sign in</a>
+              <a class="button primary" href="/courses" data-account="in" hidden>My courses</a>
+            </p>
+          </div>
+          <!-- doodle:plane -->
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/privacy">Privacy</a>
+      <a href="/playground">Playground</a>
+      <span>Notebook Lab runs notebooks in your browser. No analytics, no tracking.</span>
+    </footer>
   </body>
 </html>

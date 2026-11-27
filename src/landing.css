@@ -1,0 +1,923 @@
+/* The landing page (index.html) and the "Page not found" document (404.html). Colours, fonts, buttons, header and footer are in base.css. */
+@import './base.css';
+
+.landing {
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.landing .site-header-inner,
+.landing .site-footer,
+.band-inner,
+.hero-inner {
+  max-width: 1160px;
+}
+
+.landing main:focus {
+  outline: none;
+}
+
+.landing h1,
+.landing h2,
+.landing h3,
+.lost-page h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.landing h2 {
+  font-size: clamp(1.8rem, 1.2rem + 2vw, 2.5rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.landing h3 {
+  font-size: 1.24rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.landing p {
+  margin: 0;
+}
+
+.landing code {
+  font: 0.88em var(--mono);
+}
+
+/* Handwriting: margin notes only, never smaller than this. */
+.hand {
+  font: 500 1.5rem/1.15 var(--hand);
+  color: var(--pen-red-text);
+}
+
+.button.big {
+  min-height: 48px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
+/* The one loud thing on the page: ink on paper, on a block of highlighter. */
+.button.primary.big {
+  box-shadow: 4px 4px 0 var(--hl-edge);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.button.primary.big:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--hl-edge);
+}
+
+.button.primary.big:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--hl-edge);
+}
+
+.calls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+/* --- Hero: dotted notebook paper ---------------------------------------------------------------- */
+
+.hero {
+  background-image: radial-gradient(circle, var(--dot) 1.1px, transparent 1.6px);
+  background-size: 22px 22px;
+  background-position: 11px 11px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.hero-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 560px;
+  align-items: center;
+  gap: 32px;
+  margin: 0 auto;
+  padding: 56px 16px 64px;
+}
+
+.landing h1 {
+  /* The swash lies behind the words, on top of the paper. */
+  isolation: isolate;
+  font-size: clamp(2.5rem, 1.3rem + 4.2vw, 4.1rem);
+  font-weight: 560;
+  line-height: 1.04;
+  letter-spacing: -0.028em;
+}
+
+.marked {
+  position: relative;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.marked .doodle {
+  position: absolute;
+  z-index: -1;
+  left: -3%;
+  top: 8%;
+  width: 106%;
+  max-width: none;
+  height: 92%;
+}
+
+.lede {
+  max-width: 34em;
+  margin-top: 22px !important;
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+
+.hero .calls {
+  margin-top: 30px;
+}
+
+.hero-aside {
+  margin-top: 16px !important;
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
+/* The notebook, and the notes around it. */
+.hero-visual {
+  position: relative;
+  width: 560px;
+  max-width: 100%;
+  padding: 58px 124px 70px 56px;
+}
+
+.mock {
+  --doodle-paper: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+  transform: rotate(-1.4deg);
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+.mock-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.mock-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.mock-status i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--pen-green);
+}
+
+.mock-text {
+  margin: 10px 14px 8px 48px !important;
+  font-size: 13px;
+}
+
+.mock-cell {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 4px;
+  padding: 0 12px 10px 6px;
+}
+
+.mock-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding-top: 5px;
+  color: var(--muted);
+  font: 10.5px var(--mono);
+}
+
+.mock-run {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.mock-run::after {
+  content: '';
+  width: 8px;
+  height: 9px;
+  margin-left: 2px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.mock-body {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.mock-cell.is-check .mock-body {
+  border-left: 3px solid var(--accent);
+}
+
+.mock pre {
+  margin: 0;
+  font: 12px/1.5 var(--mono);
+  font-variant-ligatures: none;
+}
+
+.mock-code {
+  padding: 8px 10px;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.mock-out {
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  white-space: pre-wrap;
+}
+
+.mock-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-top: 1px solid var(--border);
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.mock-check .doodle {
+  width: 14px;
+}
+
+.mock .tk {
+  color: var(--tok-keyword);
+}
+
+.mock .ts {
+  color: var(--tok-string);
+}
+
+.mock .tn {
+  color: var(--tok-number);
+}
+
+.mock .tb {
+  color: var(--tok-builtin);
+}
+
+.notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  position: absolute;
+  font: 500 1.56rem/1.1 var(--hand);
+}
+
+.note .doodle {
+  position: absolute;
+}
+
+.note .doodle-arrow-short {
+  display: none;
+}
+
+/* 1: above the notebook; its arrow comes down the left margin to the code cell. */
+.note-1 {
+  top: 12px;
+  left: 76px;
+}
+
+.note-1 .doodle {
+  top: 6px;
+  left: -72px;
+}
+
+/* 2: to the right of the output; its arrow loops in from the right. */
+.note-2 {
+  top: 176px;
+  right: 0;
+  width: 118px;
+  transform: rotate(3deg);
+}
+
+.note-2 .doodle {
+  top: 86px;
+  left: -22px;
+}
+
+/* 3: below the notebook; its arrow goes up to "Check passed". */
+.note-3 {
+  bottom: 14px;
+  left: 200px;
+  transform: rotate(-2deg);
+}
+
+.note-3 .doodle {
+  bottom: 14px;
+  left: -74px;
+}
+
+/* The one moment of motion: the highlighter and the notes draw themselves in, once. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero .draw path {
+    stroke-dasharray: 1;
+    animation: draw 0.55s ease-out both;
+    animation-delay: var(--at, 0.2s);
+  }
+
+  /* The head of an arrow follows its line. */
+  .hero .note .draw path:nth-child(n + 2) {
+    animation-duration: 0.18s;
+    animation-delay: calc(var(--at, 0.2s) + 0.5s);
+  }
+
+  .hero .marked .draw path:nth-child(2) {
+    animation-delay: 0.55s;
+  }
+
+  .hero .marked .draw path:nth-child(3) {
+    animation-delay: 0.8s;
+  }
+
+  .hero .marked .draw path {
+    animation-duration: 0.4s;
+    --at: 0.3s;
+  }
+
+  .hero .note span {
+    animation: appear 0.45s ease-out both;
+    animation-delay: calc(var(--at, 0.2s) - 0.25s);
+  }
+
+  .note-1 {
+    --at: 1.15s;
+  }
+
+  .note-2 {
+    --at: 1.65s;
+  }
+
+  .note-3 {
+    --at: 2.15s;
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* --- Bands --------------------------------------------------------------------------------------- */
+
+.band {
+  padding: 76px 0;
+}
+
+.band-inner {
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.band-head {
+  max-width: 40em;
+  margin-bottom: 40px;
+}
+
+.band-head p {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 1.08rem;
+}
+
+/* What students can run */
+
+.topic-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.topic {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* The drawings differ in height; the headings under them still line up. */
+.topic > .doodle {
+  width: 240px;
+  height: 132px;
+  margin-bottom: 12px;
+  transition: transform 0.15s ease;
+}
+
+.topic:hover > .doodle {
+  transform: rotate(-1.5deg) translateY(-2px);
+}
+
+.topic h3 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* The whole topic opens its notebook. */
+.topic h3 a::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 14px;
+}
+
+.topic h3 a:hover,
+.topic:hover h3 a {
+  text-decoration: underline;
+  text-decoration-color: var(--hl-edge);
+  text-decoration-thickness: 3px;
+}
+
+.topic h3 a:focus-visible {
+  outline: none;
+}
+
+.topic h3 a:focus-visible::after {
+  outline: 2px solid var(--focus);
+}
+
+.topic-number {
+  margin-right: 2px;
+  color: var(--muted);
+  font: 500 0.78em var(--mono);
+  letter-spacing: 0;
+}
+
+.topic > p:not(.hand) {
+  max-width: 32em;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+/* "Start here" is a note stuck next to the five topics. */
+.topic-first {
+  align-self: center;
+  padding: 20px 22px 22px;
+  border: 2px dashed color-mix(in srgb, var(--text) 45%, transparent);
+  border-radius: 14px;
+  transform: rotate(1deg);
+}
+
+.topic-first .hand {
+  margin-bottom: 6px;
+}
+
+.topic-first > .doodle {
+  position: absolute;
+  top: -20px;
+  right: -14px;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+}
+
+.topic-first:hover > .doodle {
+  transform: rotate(12deg);
+}
+
+.topic-first h3 a::after {
+  inset: 0;
+}
+
+/* How it works for a teacher: a white sheet on the desk */
+
+.steps {
+  --doodle-paper: var(--surface);
+  background: var(--surface);
+  border-block: 1px solid var(--border);
+}
+
+.step-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 40px 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  counter-increment: step;
+}
+
+.step > .doodle {
+  width: 120px;
+  margin-bottom: 10px;
+}
+
+.step h3 {
+  position: relative;
+  padding-left: 1.5em;
+  font-size: 1.16rem;
+}
+
+/* The number of the step, in the teacher's red pen. */
+.step h3::before {
+  content: counter(step) '.';
+  position: absolute;
+  left: 0;
+  top: -0.2em;
+  font: 600 1.9rem/1 var(--hand);
+  color: var(--pen-red-text);
+}
+
+.step h3 code {
+  font-size: 0.82em;
+}
+
+.step p {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.steps .calls {
+  margin-top: 44px;
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+/* Plain facts, and the limits on a yellow note */
+
+/* A word or two underlined by hand, in the red pen. */
+.underlined {
+  position: relative;
+  display: inline-block;
+}
+
+.underlined .doodle {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  width: 100%;
+  max-width: none;
+  height: 10px;
+  margin-top: -2px;
+  color: var(--pen-red);
+}
+
+.underlined .doodle path {
+  vector-effect: non-scaling-stroke;
+}
+
+.facts-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: 40px 64px;
+}
+
+.fact-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 30px 40px;
+  margin: 34px 0 0;
+}
+
+.fact-list dt {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font: 600 1.18rem/1.25 var(--serif);
+  letter-spacing: -0.01em;
+}
+
+.fact-list dt .doodle {
+  position: relative;
+  top: 3px;
+  width: 20px;
+  color: var(--pen-green);
+}
+
+.fact-list dd {
+  margin: 6px 0 0 28px;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+.limits {
+  position: relative;
+  margin-top: 8px;
+  padding: 26px 24px 22px;
+  border-radius: 3px;
+  background: var(--hl-soft);
+  box-shadow: var(--shadow-lift);
+  transform: rotate(1.2deg);
+}
+
+/* A strip of tape */
+.limits::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 96px;
+  height: 24px;
+  margin-left: -48px;
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  transform: rotate(-2.5deg);
+}
+
+.limits h3 {
+  font-size: 1.3rem;
+}
+
+.limits ul {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.96rem;
+  line-height: 1.5;
+}
+
+.limits li + li {
+  margin-top: 9px;
+}
+
+/* For students */
+
+.join {
+  padding-top: 0;
+}
+
+.join-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px 48px;
+  padding-top: 56px;
+  border-top: 2px dashed color-mix(in srgb, var(--text) 30%, transparent);
+}
+
+.join-inner > div {
+  max-width: 36em;
+}
+
+.join h2 {
+  margin-top: 2px;
+}
+
+.join p:not(.hand):not(.calls) {
+  margin-top: 12px;
+  color: var(--muted);
+}
+
+.join .calls {
+  margin-top: 22px;
+}
+
+.join-inner > .doodle {
+  width: 150px;
+  margin-right: 6%;
+  transform: rotate(-6deg);
+}
+
+.landing .site-footer {
+  padding-top: 18px;
+  padding-bottom: 36px;
+  font-size: 14px;
+}
+
+/* --- Narrower screens ------------------------------------------------------------------------- */
+
+@media (max-width: 1080px) {
+  .hero-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding-top: 44px;
+    padding-bottom: 40px;
+  }
+
+  .hero-visual {
+    justify-self: center;
+  }
+
+  .step-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .topic-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .facts-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .limits {
+    max-width: 420px;
+    justify-self: center;
+  }
+}
+
+@media (max-width: 620px) {
+  .landing {
+    font-size: 16px;
+  }
+
+  .band {
+    padding: 52px 0;
+  }
+
+  .band-head {
+    margin-bottom: 30px;
+  }
+
+  .hero-inner {
+    padding-top: 32px;
+    padding-bottom: 36px;
+  }
+
+  .lede {
+    font-size: 1.1rem;
+  }
+
+  .hero .calls .button.big {
+    flex: 1 1 auto;
+  }
+
+  /* The notebook lies flat, and the notes drop below it as a short list. */
+  .hero-visual {
+    width: 100%;
+    padding: 12px 0 0;
+  }
+
+  .mock {
+    max-width: 440px;
+    margin: 0 auto;
+    transform: rotate(-0.8deg);
+  }
+
+  .notes {
+    display: grid;
+    gap: 6px;
+    max-width: 440px;
+    margin: 18px auto 0;
+  }
+
+  .note,
+  .note-2 {
+    position: static;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+    transform: none;
+    font-size: 1.44rem;
+  }
+
+  .note .doodle {
+    display: none;
+  }
+
+  .note .doodle-arrow-short {
+    position: static;
+    display: block;
+    width: 26px;
+  }
+
+  .topic-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+  }
+
+  .topic > .doodle {
+    height: auto;
+  }
+
+  .topic-first > .doodle {
+    right: -6px;
+  }
+
+  .step-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 30px;
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: start;
+  }
+
+  .step > .doodle {
+    grid-row: span 2;
+    width: 96px;
+    margin: 0;
+  }
+
+  .fact-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .join-inner {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+
+  .join-inner > .doodle {
+    width: 110px;
+    margin: 0;
+  }
+}
+
+/* --- Page not found (404.html) -------------------------------------------------------------------- */
+
+.lost-page {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 12vh 16px 48px;
+}
+
+.lost-page .doodle {
+  width: 200px;
+  margin: 0 0 18px -8px;
+}
+
+.lost-page h1 {
+  font-size: 2.2rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.lost-page p {
+  margin: 10px 0 0;
+}
+
+.lost-page .calls {
+  margin-top: 22px;
+}

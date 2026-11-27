@@ -69,10 +69,13 @@ export function register(suite, env) {
     await page.screenshot({ path: `${env.screenshotDir}/${name}.png`, fullPage: true, ...options })
   }
 
-  /** Sign up through the dialog, as a person does. Ends on "My courses". */
+  /** "Sign in" in the header: a link on the landing page, a button in the app. */
+  const signInControl = (page) => page.locator('.site-tools :is(a, button)', { hasText: 'Sign in' })
+
+  /** Sign up through the dialog, as a person does: from the landing page. Ends on "My courses". */
   async function signUp(page, who) {
     await page.goto(`${base}/`)
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await signInControl(page).click()
     const dialog = page.locator('dialog[open]')
     await dialog.getByRole('button', { name: 'Create an account' }).click()
     await dialog.getByLabel('Your name').fill(who.name)
@@ -85,7 +88,7 @@ export function register(suite, env) {
   }
 
   async function signIn(page, who) {
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await signInControl(page).click()
     const dialog = page.locator('dialog[open]')
     await dialog.getByLabel('Email').fill(who.email)
     await dialog.getByLabel('Password').fill(who.password)
@@ -131,15 +134,16 @@ export function register(suite, env) {
   // What the long test below sets up, for the tests after it.
   const made = {}
 
-  suite.test('signed out: the playground is the start page, with a Sign in button; course pages ask to sign in', async () => {
+  suite.test('signed out: the playground works, with a Sign in button; course pages ask to sign in; the brand leads to the landing page', async () => {
     const ctx = await context()
     const page = await ctx.newPage()
     const problems = watch(page)
-    await page.goto(`${base}/`)
+    await page.goto(`${base}/playground`)
     await page.waitForSelector('.cell')
     await page.waitForFunction(() => document.title.startsWith('00-check-your-setup.ipynb'))
     await page.getByRole('button', { name: 'Sign in' }).waitFor()
     assertEqual(await page.locator('.site-nav a').count(), 0, 'no course navigation while signed out')
+    assertEqual(await page.locator('.brand').getAttribute('href'), '/', 'the brand leads to the landing page')
     await runCell(page, 1)
     assertIncludes(await outputText(page, 1), 'emscripten', 'Python runs for a visitor who is not signed in')
     await waitSave(page, 'saved')
@@ -166,6 +170,11 @@ export function register(suite, env) {
     assertIncludes(apiMissing.headers()['content-type'], 'application/json', 'the API answers JSON, also for 404')
     await page.goto(`${base}/course`)
     await page.getByRole('heading', { name: 'Page not found' }).waitFor()
+    assertEqual(await page.locator('main svg.doodle-not-found').count(), 1, 'with its drawing')
+    // From there, and from the brand, the start is the landing page: a document of its own.
+    await page.getByRole('link', { name: 'Go to the start' }).click()
+    await page.waitForURL(`${base}/`)
+    await page.getByRole('heading', { level: 1, name: /Course notebooks/ }).waitFor()
     await ctx.close()
   })
 
@@ -176,6 +185,8 @@ export function register(suite, env) {
     const teacherProblems = watch(tp)
     await signUp(tp, teacher)
     assertEqual(await tp.locator('.site-nav a').allInnerTexts(), ['My courses', 'Playground'], 'navigation for somebody who is signed in')
+    assertEqual(await tp.locator('.brand').getAttribute('href'), '/courses', 'signed in, the brand leads to "My courses"')
+    assertEqual(await tp.locator('main svg.doodle-no-courses').count(), 1, 'a new teacher sees the drawing of an empty notebook, once')
     assertEqual(await tp.locator('.account-link').innerText(), 'Tess Teacher', 'the account link shows the name')
     assert(typeof (await tp.evaluate((key) => localStorage.getItem(key), SECRET_KEY)) === 'string', 'the session secret is in localStorage')
     assertEqual(await tp.evaluate(() => document.cookie), '', 'the session cookie is HttpOnly: scripts do not see it')
@@ -855,15 +866,16 @@ print("RESULTS" + json.dumps(results))
     await page.waitForFunction(() => document.querySelector('.account-link')?.textContent === 'Samuel Student')
 
     // Sign out: the session, the secret and the local copies of course notebooks are gone from this browser.
+    // Signed out, home is the landing page.
     await page.getByRole('button', { name: 'Sign out' }).click()
-    await page.waitForSelector('.cell')
-    await page.getByRole('button', { name: 'Sign in' }).waitFor()
+    await page.waitForURL(`${base}/`)
+    await signInControl(page).waitFor()
     const left = await page.evaluate(() => Object.keys(localStorage).filter((key) => key.includes('session') || key.includes('remote')))
     assertEqual(left, [], 'no session secret and no course notebooks are left in this browser')
     assertEqual((await made.samCtx.cookies()).length, 0, 'the session cookie is gone')
 
     // Forgotten password.
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await signInControl(page).click()
     await page.locator('dialog[open]').getByRole('button', { name: 'Forgot your password?' }).click()
     let link
     if (site.passwordReset) {
@@ -902,7 +914,8 @@ print("RESULTS" + json.dumps(results))
     await page.getByRole('button', { name: 'Change password' }).click()
     await page.waitForFunction(() => document.querySelector('.page-message')?.textContent.includes('Password changed'))
     await page.getByRole('button', { name: 'Sign out' }).click()
-    await page.getByRole('button', { name: 'Sign in' }).waitFor()
+    await page.waitForURL(`${base}/`)
+    await signInControl(page).waitFor()
     await signIn(page, { email: sam.email, password: 'a brand new password' })
     await page.locator('dialog[open] .form-error:not(:empty)').waitFor()
     assertIncludes(await page.locator('dialog[open] .form-error').innerText(), 'do not match', 'the old password is refused')
@@ -934,14 +947,14 @@ print("RESULTS" + json.dumps(results))
 
 /** A deployment without a database (a pull-request preview): the playground only, no sign-in. */
 export function registerWithoutDatabase(suite, env) {
-  suite.test('without a database the API answers 503 and the page is the playground only, with no sign-in button', async () => {
+  suite.test('without a database the API answers 503 and the app is the playground only, with no sign-in button', async () => {
     const base = env.noDatabase.url
     const ctx = await env.browser.newContext({ viewport: { width: 1280, height: 900 } })
     const page = await ctx.newPage()
     const problems = watch(page)
     const responses = []
     page.on('response', (response) => responses.push([new URL(response.url()).pathname, response.status()]))
-    await page.goto(`${base}/`)
+    await page.goto(`${base}/playground`)
     await page.waitForSelector('.cell')
     await page.waitForFunction(() => document.title.startsWith('00-check-your-setup.ipynb'))
     await page.waitForLoadState('networkidle')

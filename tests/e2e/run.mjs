@@ -11,9 +11,11 @@
  *
  * Two servers. The notebook tests (engine.mjs, lab.mjs) run against the Node server: the build
  * folder served like Cloudflare serves it, plus the real API on SQLite. The tests of accounts,
- * courses and submissions (accounts.mjs) run against the real Worker under `wrangler dev` with a
- * local D1 database, and fall back to the Node server if `wrangler dev` cannot start here
- * (E2E_TARGET=node skips the Worker; E2E_TARGET=worker makes a failed start an error).
+ * courses and submissions (accounts.mjs) and of the landing page (landing.mjs) run against the
+ * real Worker under `wrangler dev` with a local D1 database, and fall back to the Node server if
+ * `wrangler dev` cannot start here (E2E_TARGET=node skips the Worker; E2E_TARGET=worker makes a
+ * failed start an error). The landing page is also tested on copies of the site without accounts:
+ * the Worker without a database, and the build folder on a server without the API.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -23,6 +25,7 @@ import { register as registerAccounts, registerWithoutDatabase } from './account
 import { register as registerEngine } from './engine.mjs'
 import { loadPlaywright, notebook, Suite } from './helpers.mjs'
 import { register as registerLab } from './lab.mjs'
+import { register as registerLanding, registerWithoutAccounts } from './landing.mjs'
 import { startServer } from './server.mjs'
 import { startWorker } from './worker.mjs'
 
@@ -148,9 +151,18 @@ if (half !== 'accounts') {
   registerEngine(suite, env)
   registerLab(suite, env)
 }
+// The build folder as plain files, without the API: what any static host or `vite preview` serves.
+let filesOnly = null
 if (half !== 'notebooks') {
+  registerLanding(suite, env)
   registerAccounts(suite, env)
-  if (accounts.noDatabase) registerWithoutDatabase(suite, env)
+  if (accounts.noDatabase) {
+    registerWithoutDatabase(suite, env)
+    registerWithoutAccounts(suite, env, { url: accounts.noDatabase.url, what: 'the Worker without a database', expected: [] })
+  }
+  filesOnly = await startServer({ root: dist, headersFile: join(repo, 'public', '_headers'), api: false })
+  // Without an API the question "what does this deployment offer?" gets a 404, which the browser reports.
+  registerWithoutAccounts(suite, env, { url: filesOnly.url, what: 'files only, no API', expected: [/status of 404/] })
 }
 
 console.log(`End-to-end tests (Chromium ${browser.version()})\n  notebooks: the Node server (${server.url})\n  accounts:  ${accounts.describe}\n`)
@@ -161,6 +173,7 @@ try {
   await browser.close()
   await micBrowser.close()
   await accounts.close()
+  await filesOnly?.close()
   await server.close()
 }
 process.exit(ok ? 0 : 1)

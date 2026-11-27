@@ -30,7 +30,7 @@ const TOKEN = 'hf_TESTtoken0123456789abcdefXYZ'
 export function register(suite, env) {
   const fresh = async (options = {}, browser = env.browser) => {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, acceptDownloads: true, ...options })
-    const app = await openApp(context, env.url)
+    const app = await openApp(context, `${env.url}/playground`)
     return { context, ...app }
   }
   const workerLog = (page, name) => page.workers()[0].evaluate((key) => globalThis[key], name)
