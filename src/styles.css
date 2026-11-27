@@ -1,214 +1,7 @@
-/* Notebook Lab. Colours are variables; dark follows the system unless the student chose a theme. */
+/* Notebook Lab, the app: notebook, pages, forms, tables and dialogs. Colours, fonts, buttons and the site header are in base.css. */
+@import './base.css';
 
-:root {
-  --bg: #f6f6f3;
-  --surface: #ffffff;
-  --surface-2: #f0f1ee;
-  --text: #1b1d21;
-  --muted: #59616c;
-  --border: #d6d9de;
-  --accent: #2553c7;
-  --accent-contrast: #ffffff;
-  --accent-soft: #e6edfc;
-  --focus: #1a56ff;
-  --code-bg: #fbfbf9;
-  --error: #a8201a;
-  --error-bg: #fdefee;
-  --ok: #17703a;
-  --ok-bg: #e7f5ea;
-  --warn-bg: #fff6e0;
-  --stderr-bg: #fff3f0;
-  --tok-keyword: #8a1ea8;
-  --tok-string: #a3401a;
-  --tok-number: #0b6e58;
-  --tok-comment: #68707b;
-  --tok-def: #1d4fc0;
-  --tok-builtin: #1b6f8f;
-  --shadow: 0 1px 2px rgb(20 24 31 / 6%);
-  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #131518;
-    --surface: #1b1e22;
-    --surface-2: #23272c;
-    --text: #e7e9ec;
-    --muted: #a0a8b3;
-    --border: #353a42;
-    --accent: #8fb0ff;
-    --accent-contrast: #0c1226;
-    --accent-soft: #212c47;
-    --focus: #9dbaff;
-    --code-bg: #171a1d;
-    --error: #ff9a91;
-    --error-bg: #3a1b19;
-    --ok: #6fdc8c;
-    --ok-bg: #16301e;
-    --warn-bg: #3a3118;
-    --stderr-bg: #2c1f1d;
-    --tok-keyword: #d79bf0;
-    --tok-string: #f0a679;
-    --tok-number: #7fd6bd;
-    --tok-comment: #8d95a0;
-    --tok-def: #9dbaff;
-    --tok-builtin: #7cc7e6;
-    --shadow: none;
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg: #131518;
-  --surface: #1b1e22;
-  --surface-2: #23272c;
-  --text: #e7e9ec;
-  --muted: #a0a8b3;
-  --border: #353a42;
-  --accent: #8fb0ff;
-  --accent-contrast: #0c1226;
-  --accent-soft: #212c47;
-  --focus: #9dbaff;
-  --code-bg: #171a1d;
-  --error: #ff9a91;
-  --error-bg: #3a1b19;
-  --ok: #6fdc8c;
-  --ok-bg: #16301e;
-  --warn-bg: #3a3118;
-  --stderr-bg: #2c1f1d;
-  --tok-keyword: #d79bf0;
-  --tok-string: #f0a679;
-  --tok-number: #7fd6bd;
-  --tok-comment: #8d95a0;
-  --tok-def: #9dbaff;
-  --tok-builtin: #7cc7e6;
-  --shadow: none;
-  color-scheme: dark;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  -webkit-text-size-adjust: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 16px/1.55 var(--sans);
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-
-a {
-  color: var(--accent);
-}
-
-:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-[hidden] {
-  display: none !important;
-}
-
-/* --- Site header, banner, footer --------------------------------------------------------------- */
-
-.skip-link {
-  position: absolute;
-  left: 8px;
-  top: -60px;
-  z-index: 100;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.skip-link:focus {
-  top: 8px;
-}
-
-.site-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.site-header-inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 18px;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 8px 16px;
-}
-
-.brand {
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  color: var(--text);
-  text-decoration: none;
-}
-
-.site-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  flex: 1 1 auto;
-}
-
-.site-nav a,
-.account-link {
-  padding: 4px 2px;
-  color: var(--text);
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  font-size: 15px;
-}
-
-.site-nav a:hover,
-.account-link:hover {
-  border-bottom-color: var(--border);
-}
-
-.site-nav a[aria-current='page'],
-.account-link[aria-current='page'] {
-  border-bottom-color: var(--accent);
-  font-weight: 600;
-}
-
-.site-tools {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 12px;
-  margin-left: auto;
-  min-width: 0;
-}
+/* --- Site header (the rest is in base.css), banner ----------------------------------------------- */
 
 .account-link {
   max-width: 220px;
@@ -218,29 +11,18 @@ a {
 }
 
 .site-banner {
+  width: calc(100% - 32px);
   max-width: 1048px;
   margin: 12px auto 0;
   padding: 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--ok-bg);
   font-size: 14.5px;
 }
 
 .view-host:focus {
   outline: none;
-}
-
-.site-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 16px;
-  max-width: 1080px;
-  margin: 0 auto;
-  padding: 14px 16px 28px;
-  border-top: 1px solid var(--border);
-  font-size: 13px;
-  color: var(--muted);
 }
 
 /* --- Notebook toolbar ------------------------------------------------------------------------ */
@@ -280,7 +62,7 @@ a {
   min-height: 36px;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--surface);
 }
 
@@ -288,65 +70,6 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.button {
-  min-height: 36px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  cursor: pointer;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.button:hover {
-  background: var(--surface-2);
-}
-
-.button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-contrast);
-  font-weight: 600;
-}
-
-.button.primary:hover {
-  filter: brightness(1.08);
-}
-
-.button.danger {
-  color: var(--error);
-}
-
-.button.danger-solid {
-  background: var(--error);
-  border-color: var(--error);
-  color: var(--surface);
-  font-weight: 600;
-}
-
-.button.small {
-  min-height: 30px;
-  padding: 2px 9px;
-  font-size: 13.5px;
-}
-
-.button:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-a.button {
-  display: inline-flex;
-  align-items: center;
-  color: var(--text);
-  text-decoration: none;
-}
-
-a.button.primary {
-  color: var(--accent-contrast);
 }
 
 .link-button {
@@ -802,21 +525,29 @@ a.button.primary {
   margin-bottom: 4px;
 }
 
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+  font-family: var(--serif);
+  font-weight: 600;
+}
+
 .markdown h1 {
-  font-size: 1.7rem;
+  font-size: 1.8rem;
   line-height: 1.2;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   margin: 0.6em 0 0.4em;
 }
 
 .markdown h2 {
-  font-size: 1.3rem;
+  font-size: 1.36rem;
   line-height: 1.25;
+  letter-spacing: -0.01em;
   margin: 1em 0 0.4em;
 }
 
 .markdown h3 {
-  font-size: 1.08rem;
+  font-size: 1.12rem;
   margin: 1em 0 0.3em;
 }
 
@@ -864,21 +595,40 @@ a.button.primary {
 .page {
   max-width: 920px;
   margin: 0 auto;
-  padding: 20px 16px 36px;
+  padding: 26px 16px 44px;
+}
+
+.page h1,
+.page h2,
+.assignment-panel h1,
+.assignment-panel h2,
+.dialog h2 {
+  font-family: var(--serif);
+  font-weight: 600;
 }
 
 .page h1,
 .assignment-panel h1 {
   margin: 0;
-  font-size: 1.6rem;
-  line-height: 1.2;
+  font-size: 1.95rem;
+  line-height: 1.15;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 
+.assignment-panel h1 {
+  font-size: 1.6rem;
+}
+
+.page > h1 {
+  margin-bottom: 10px;
+}
+
 .page h2 {
-  margin: 0 0 8px;
-  font-size: 1.15rem;
+  margin: 0 0 10px;
+  font-size: 1.3rem;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
 .page h3 {
@@ -923,7 +673,7 @@ a.button.primary {
   margin: 0 0 14px;
   padding: 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--ok-bg);
   font-size: 14.5px;
 }
@@ -951,9 +701,47 @@ mark.placeholder {
 }
 
 .page-section {
-  margin-top: 22px;
-  padding-top: 18px;
+  margin-top: 26px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
+}
+
+/* Nothing here yet: a doodle and a sentence. */
+.empty-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  margin: 4px 0 14px;
+}
+
+.empty-state .doodle {
+  width: 150px;
+}
+
+.empty-state .empty {
+  flex: 1 1 240px;
+  max-width: 44ch;
+  margin: 0;
+}
+
+.empty-state.lost {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.empty-state.lost .doodle {
+  width: 180px;
+}
+
+.empty-state.lost .empty {
+  flex: none;
+}
+
+.empty-state.done {
+  margin-top: 18px;
 }
 
 .prose {
@@ -971,18 +759,44 @@ mark.placeholder {
 .course-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
-  gap: 12px;
-  margin: 0 0 14px;
+  gap: 14px;
+  margin: 0 0 16px;
   padding: 0;
   list-style: none;
 }
 
+/* A course is an exercise book: a spine in one of the four pens, and a corner that lifts when you point at it. */
 .course-card {
-  padding: 12px 14px;
+  --spine: var(--hl);
+  position: relative;
+  min-height: 92px;
+  padding: 14px 16px 14px 28px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--surface);
+  border-radius: 4px 12px 12px 4px;
+  background:
+    radial-gradient(circle, var(--bg) 2.2px, transparent 2.8px) 3px 8px / 10px 14px repeat-y,
+    linear-gradient(to right, var(--spine) 16px, transparent 16px),
+    var(--surface);
   box-shadow: var(--shadow);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.course-card[data-pen='1'] {
+  --spine: color-mix(in srgb, var(--pen-blue) 55%, var(--surface));
+}
+
+.course-card[data-pen='2'] {
+  --spine: color-mix(in srgb, var(--pen-red) 60%, var(--surface));
+}
+
+.course-card[data-pen='3'] {
+  --spine: color-mix(in srgb, var(--pen-green) 50%, var(--surface));
+}
+
+.course-card:hover,
+.course-card:focus-within {
+  transform: translateY(-2px) rotate(-0.4deg);
+  box-shadow: var(--shadow-lift);
 }
 
 .course-card h3 {
@@ -990,23 +804,51 @@ mark.placeholder {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
-  font-size: 1.05rem;
+  font: 600 1.2rem/1.25 var(--serif);
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
+.course-card h3 a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* The whole card opens the course. */
+.course-card h3 a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.course-card h3 a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--hl-edge);
+  text-decoration-thickness: 2px;
+}
+
+.course-card h3 a:focus-visible {
+  outline: none;
+}
+
+.course-card:has(a:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .course-card .card-meta {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
 }
 
 .badge {
   display: inline-block;
   padding: 0 8px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--surface-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.7;
+  font: 600 12px/1.75 var(--sans);
+  letter-spacing: 0.01em;
   white-space: nowrap;
 }
 
@@ -1016,13 +858,20 @@ mark.placeholder {
 
 .badge[data-state='published'],
 .badge[data-state='submitted'] {
+  border-color: color-mix(in srgb, var(--ok) 35%, var(--border));
   background: var(--ok-bg);
   color: var(--ok);
 }
 
 .badge[data-state='late'],
 .badge.late {
+  border-color: var(--hl-edge);
   background: var(--warn-bg);
+}
+
+.badge[data-state='draft'] {
+  border-style: dashed;
+  background: none;
 }
 
 .badge[data-state='in-progress'] {
@@ -1037,10 +886,11 @@ mark.placeholder {
 
 .card-form {
   max-width: 560px;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .field {
@@ -1069,11 +919,27 @@ mark.placeholder {
 .field select,
 .choice-row select {
   width: 100%;
-  min-height: 38px;
-  padding: 6px 10px;
+  min-height: 40px;
+  padding: 7px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--bg);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover,
+.dialog input:not([type='radio']):hover {
+  border-color: color-mix(in srgb, var(--border) 55%, var(--text));
+}
+
+.field input[type='radio'],
+.field input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
+.page h3.form-title {
+  margin: 16px 0 8px;
 }
 
 .field textarea {
@@ -1165,9 +1031,15 @@ mark.placeholder {
 .disclosure > summary,
 .instructions > summary {
   width: fit-content;
-  padding: 4px 2px;
+  padding: 4px 6px 4px 2px;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
+}
+
+.disclosure > summary:hover,
+.instructions > summary:hover {
+  background: var(--hl-soft);
 }
 
 .disclosure > .card-form {
@@ -1199,13 +1071,22 @@ mark.placeholder {
 }
 
 .data-table thead th {
-  font-size: 13px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--text);
+  font-size: 12.5px;
   font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
 }
 
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--hl-soft) 55%, transparent);
+}
+
 .data-table tbody th {
+  min-width: 9.5em;
   font-weight: 600;
 }
 
@@ -1230,9 +1111,9 @@ mark.placeholder {
 }
 
 .counts li {
-  padding: 2px 10px;
+  padding: 3px 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--surface);
   font-size: 14px;
 }
@@ -1253,17 +1134,21 @@ mark.placeholder {
   margin: 0;
 }
 
+/* The join code is what a teacher writes on the board: on a ticket, marked with the highlighter. */
 .join-code {
-  padding: 4px 14px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  padding: 5px 16px;
+  border: 2px dashed color-mix(in srgb, var(--text) 55%, transparent);
+  border-radius: 6px;
+  background: var(--hl);
   font: 600 1.5rem var(--mono);
   letter-spacing: 0.08em;
   user-select: all;
+  transform: rotate(-1deg);
 }
 
 .page-section[data-join-open='false'] .join-code {
+  background: none;
+  border-color: var(--border);
   color: var(--muted);
   text-decoration: line-through;
 }
@@ -1273,10 +1158,11 @@ mark.placeholder {
 .assignment-panel {
   max-width: 1048px;
   margin: 14px auto 0;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .notebook-view .assignment-panel {
@@ -1285,7 +1171,7 @@ mark.placeholder {
 
 .assignment-panel h2 {
   margin: 0 0 6px;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
 }
 
 .assignment-panel p {
@@ -1298,7 +1184,7 @@ mark.placeholder {
 
 .panel-status {
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--surface-2);
   font-size: 14.5px;
 }
@@ -1311,17 +1197,40 @@ mark.placeholder {
   background: var(--warn-bg);
 }
 
+/* The grade comes back the way a marked paper does: in the teacher's red pen. */
 .panel-grade {
-  margin-top: 10px;
-  padding: 10px 12px;
+  margin-top: 12px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 6px;
+  border-left: 3px solid var(--pen-red);
+  border-radius: var(--radius);
 }
 
 .grade-value {
-  font-size: 1.1rem;
-  font-weight: 600;
+  margin: 4px 0 12px !important;
+  font: 600 1.9rem/1.1 var(--hand);
+  color: var(--pen-red-text);
+}
+
+.grade-number {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.3em;
+  padding: 0.12em 0.1em;
+}
+
+.grade-number .doodle {
+  position: absolute;
+  left: -0.45em;
+  top: -0.12em;
+  width: calc(100% + 0.9em);
+  max-width: none;
+  height: calc(100% + 0.24em);
+  color: var(--pen-red);
+}
+
+.grade-number .doodle path {
+  vector-effect: non-scaling-stroke;
 }
 
 .review-columns {
@@ -1422,10 +1331,6 @@ mark.placeholder {
     padding: 16px 12px 28px;
   }
 
-  .site-header-inner {
-    padding: 8px 12px;
-  }
-
   .join-code {
     font-size: 1.25rem;
   }
@@ -1435,20 +1340,37 @@ mark.placeholder {
 
 .dialog {
   width: min(480px, calc(100vw - 32px));
-  padding: 20px;
+  padding: 22px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
   color: var(--text);
+  box-shadow: 0 24px 60px -20px rgb(20 16 8 / 45%);
 }
 
 .dialog::backdrop {
-  background: rgb(10 12 16 / 50%);
+  background: rgb(24 20 12 / 48%);
 }
 
 .dialog h2 {
   margin: 0 0 8px;
-  font-size: 1.15rem;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* The sign-in dialog: a small drawing next to its title. */
+.dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dialog-head .doodle {
+  width: 62px;
+  margin: -8px -4px -6px 0;
+  --doodle-paper: var(--surface);
 }
 
 .dialog p {
@@ -1465,10 +1387,10 @@ mark.placeholder {
 
 .dialog input:not([type='radio']) {
   width: 100%;
-  min-height: 38px;
-  padding: 6px 10px;
+  min-height: 40px;
+  padding: 7px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--bg);
 }
 
