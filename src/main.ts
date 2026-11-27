@@ -1,0 +1,9 @@
+import 'katex/dist/katex.min.css'
+import './styles.css'
+import { App } from './app.ts'
+
+const root = document.getElementById('app')
+if (root) {
+  const app = new App(root)
+  void app.start()
+}

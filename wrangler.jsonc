@@ -1,0 +1,14 @@
+{
+  // Notebook Lab prototype: a static site. There is no Worker script, no database and no server
+  // code: Cloudflare only serves the files in ./dist (headers: public/_headers).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "colab-exercise",
+  "compatibility_date": "2026-11-01",
+  // Build the site before wrangler uploads it (Workers Builds and `npm run deploy`).
+  "build": { "command": "npm run build" },
+  "assets": {
+    "directory": "./dist",
+    // One page; any other address is a real 404.
+    "not_found_handling": "404-page"
+  }
+}
