@@ -1,11 +1,15 @@
-export interface HeaderRule {
-  pattern: RegExp
-  headers: Array<[string, string]>
-}
+import type { DatabaseSync } from 'node:sqlite'
+import type { HeaderRule } from '../../server/static.ts'
+import type { ServerConfig } from '../../server/server.ts'
+
 export function parseHeaders(text: string): HeaderRule[]
-export function startServer(options: {
-  root: string
-  headersFile?: string
-  port?: number
-  extraFiles?: Record<string, string>
-}): Promise<{ url: string; close(): Promise<void> }>
+export function startServer(
+  options: {
+    root: string
+    headersFile?: string
+    port?: number
+    extraFiles?: Record<string, string>
+    /** false: a static site without an API. */
+    api?: boolean
+  } & Partial<Omit<ServerConfig, 'port' | 'site'>>,
+): Promise<{ url: string; db?: DatabaseSync; close(): Promise<void> }>

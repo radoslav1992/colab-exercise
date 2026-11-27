@@ -1,23 +1,30 @@
 {
   "name": "colab-exercise",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Prototype: course notebooks that run in the student's browser (Pyodide + WebGPU models).",
+  "description": "Course notebooks that run in the student's browser (Pyodide + WebGPU models), with accounts, courses, assignments and submissions.",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite",
+    "dev:api": "node --disable-warning=ExperimentalWarning --watch server/dev.ts",
+    "dev:worker": "wrangler dev",
     "build": "tsc --noEmit && vite build",
     "build:e2e": "vite build --mode e2e --outDir dist-e2e",
     "preview": "vite preview",
+    "start:local": "npm run build && node --disable-warning=ExperimentalWarning server/dev.ts --site",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && npm run test:python",
     "test:watch": "vitest",
     "test:python": "python3 -m unittest discover -s tests/python",
-    "test:e2e": "npm run build:e2e && node tests/e2e/run.mjs",
-    "deploy": "npm run build && wrangler deploy"
+    "test:e2e": "npm run build:e2e && node --disable-warning=ExperimentalWarning tests/e2e/run.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply colab-exercise --local",
+    "db:migrate:remote": "wrangler d1 migrations apply colab-exercise --remote",
+    "reset-link": "node scripts/reset-link.ts",
+    "deploy": "wrangler deploy"
   },
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.18"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.2",
@@ -25,8 +32,11 @@
     "@codemirror/language": "^6.13.1",
     "@codemirror/state": "^6.7.6",
     "@codemirror/view": "^6.44.2",
+    "@hono/node-server": "^2.1.11",
     "@lezer/highlight": "^1.2.5",
     "dompurify": "^3.5.0",
+    "fflate": "^0.8.3",
+    "hono": "^4.13.22",
     "katex": "^0.19.1",
     "marked": "^18.3.0"
   },

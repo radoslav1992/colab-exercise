@@ -175,6 +175,11 @@ export function parseNotebook(text: string): Notebook {
   } catch {
     throw new NotebookFormatError('This file is not valid JSON, so it is not a Jupyter notebook.')
   }
+  return notebookFromObject(raw)
+}
+
+/** The same for a notebook that is already parsed JSON (as the server sends it). It is checked just like a file. */
+export function notebookFromObject(raw: unknown): Notebook {
   if (!isObject(raw)) throw new NotebookFormatError('This file is not a Jupyter notebook.')
   const { cells, metadata, nbformat, nbformat_minor, ...extra } = raw
   if (typeof nbformat === 'number' && nbformat < 4) {

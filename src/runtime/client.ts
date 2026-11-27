@@ -5,7 +5,7 @@
 import { config } from '../config.ts'
 import type { DisplayOutput } from '../notebook/ipynb.ts'
 import { answerHostRequest } from './host.ts'
-import type { MainToWorker, RunError, RuntimeInfo, Status, WorkerToMain } from './protocol.ts'
+import { HOST_METHODS, type HostMethod, type MainToWorker, type RunError, type RuntimeInfo, type Status } from './protocol.ts'
 import { hasToken, onTokenChange } from './token.ts'
 
 export type RuntimeState = 'stopped' | 'starting' | 'ready' | 'failed'
@@ -25,6 +25,35 @@ interface ActiveRun {
   finish(error: RunError | null): void
 }
 
+const STATUS_KINDS = ['loading', 'package', 'download', 'running', 'idle']
+
+function readStatus(value: unknown): Status | null {
+  if (typeof value !== 'object' || value === null) return null
+  const { kind, text, progress } = value as Record<string, unknown>
+  if (typeof kind !== 'string' || !STATUS_KINDS.includes(kind) || typeof text !== 'string') return null
+  const status: Status = { kind: kind as Status['kind'], text: text.slice(0, 500) }
+  if (typeof progress === 'number' && Number.isFinite(progress)) status.progress = Math.min(1, Math.max(0, progress))
+  return status
+}
+
+function readDisplay(value: unknown): DisplayOutput | null {
+  if (typeof value !== 'object' || value === null) return null
+  const { output_type, data, metadata } = value as Record<string, unknown>
+  if (output_type !== 'display_data' && output_type !== 'execute_result') return null
+  const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+  return { output_type, data: isObject(data) ? data : {}, metadata: isObject(metadata) ? metadata : {} }
+}
+
+function readError(value: unknown): RunError | null {
+  if (typeof value !== 'object' || value === null) return null
+  const { ename, evalue, traceback } = value as Record<string, unknown>
+  return {
+    ename: String(ename ?? 'Error'),
+    evalue: String(evalue ?? ''),
+    traceback: Array.isArray(traceback) ? traceback.map((line) => String(line)) : [],
+  }
+}
+
 export class Runtime {
   state: RuntimeState = 'stopped'
   info: RuntimeInfo | null = null
@@ -33,9 +62,16 @@ export class Runtime {
   private active: ActiveRun | null = null
   private nextRunId = 1
   private failure = ''
+  private readonly stopTokenUpdates: () => void
 
   constructor(private events: RuntimeEvents) {
-    onTokenChange((set) => this.send({ type: 'token-state', set }))
+    this.stopTokenUpdates = onTokenChange((set) => this.send({ type: 'token-state', set }))
+  }
+
+  /** Stop the worker for good (the notebook view is going away). */
+  dispose(): void {
+    this.stopTokenUpdates()
+    this.stop()
   }
 
   private send(message: MainToWorker): void {
@@ -76,47 +112,78 @@ export class Runtime {
         }
         fail(event.message || 'the worker script could not be loaded')
       }
-      worker.onmessage = (event: MessageEvent<WorkerToMain>) => {
+      // Everything the worker says is untrusted: the worker runs the code of a notebook, and that
+      // code can post any message it likes. Each message is checked field by field, unknown ones
+      // are dropped, and nothing here (or in host.ts) reaches the site's API or the session.
+      worker.onmessage = (event: MessageEvent<unknown>) => {
         if (this.worker !== worker) return
-        const message = event.data
+        const message = event.data as Record<string, unknown> | null
+        if (typeof message !== 'object' || message === null) return
         switch (message.type) {
-          case 'status':
-            if (this.state !== 'failed') this.events.status(message.status, this.state)
+          case 'status': {
+            const status = readStatus(message.status)
+            if (status && this.state !== 'failed') this.events.status(status, this.state)
             break
-          case 'ready':
+          }
+          case 'ready': {
+            const info = message.info as Partial<RuntimeInfo> | null
             this.state = 'ready'
-            this.info = message.info
+            this.info = {
+              pyodide: String(info?.pyodide ?? '').slice(0, 40),
+              python: String(info?.python ?? '').slice(0, 40),
+              jspi: info?.jspi === true,
+              webgpu: info?.webgpu === true,
+            }
             resolve()
             break
+          }
           case 'fatal':
-            fail(message.message)
+            fail(String(message.message ?? 'the runtime stopped').slice(0, 2000))
             break
-          case 'stream':
-            if (this.active?.id === message.runId) this.active.handlers.stream(message.name, message.text)
-            break
-          case 'display':
-            if (this.active?.id === message.runId) this.active.handlers.display(message.output)
-            break
-          case 'done':
-            if (this.active?.id === message.runId) {
-              const run = this.active
-              this.active = null
-              run.finish(message.error)
+          case 'stream': {
+            const run = this.active
+            if (run && run.id === message.runId && typeof message.text === 'string') {
+              run.handlers.stream(message.name === 'stderr' ? 'stderr' : 'stdout', message.text)
             }
             break
-          case 'host-request':
-            void answerHostRequest(message.method, message.params).then(
-              ({ result, transfer }) => worker.postMessage({ type: 'host-response', id: message.id, ok: true, result }, transfer),
-              (err: Error) =>
-                worker.postMessage({
+          }
+          case 'display': {
+            const run = this.active
+            const output = readDisplay(message.output)
+            if (output && run && run.id === message.runId) run.handlers.display(output)
+            break
+          }
+          case 'done': {
+            const run = this.active
+            if (run && run.id === message.runId) {
+              this.active = null
+              run.finish(readError(message.error))
+            }
+            break
+          }
+          case 'host-request': {
+            const id = message.id
+            if (typeof id !== 'number') break
+            const answer = (reply: MainToWorker, transfer: Transferable[] = []) => {
+              if (this.worker === worker) worker.postMessage(reply, transfer)
+            }
+            if (!HOST_METHODS.includes(message.method as HostMethod)) {
+              answer({ type: 'host-response', id, ok: false, name: 'LabError', message: 'lab: the page does not offer this.' })
+              break
+            }
+            void answerHostRequest(message.method as HostMethod, message.params).then(
+              ({ result, transfer }) => answer({ type: 'host-response', id, ok: true, result }, transfer),
+              (err: unknown) =>
+                answer({
                   type: 'host-response',
-                  id: message.id,
+                  id,
                   ok: false,
-                  name: err.name || 'LabError',
-                  message: err.message,
-                } satisfies MainToWorker),
+                  name: (err as Error)?.name || 'LabError',
+                  message: String((err as Error)?.message ?? err),
+                }),
             )
             break
+          }
         }
       }
     })

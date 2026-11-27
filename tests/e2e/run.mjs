@@ -3,18 +3,28 @@
  *
  *   node tests/e2e/run.mjs [filter]      run only the tests whose name contains the filter
  *   SCREENSHOT_DIR=/some/folder ...      also save screenshots there
+ *   E2E_TARGET=node|worker ...           where the tests of accounts and courses run (see below)
+ *   E2E_SUITE=notebooks|accounts ...     run only one half of the tests
  *
  * Needs Playwright with Chromium (see helpers.mjs). Nothing is fetched from the internet: Pyodide
  * comes from node_modules, the model libraries are the stubs in tests/stubs.
+ *
+ * Two servers. The notebook tests (engine.mjs, lab.mjs) run against the Node server: the build
+ * folder served like Cloudflare serves it, plus the real API on SQLite. The tests of accounts,
+ * courses and submissions (accounts.mjs) run against the real Worker under `wrangler dev` with a
+ * local D1 database, and fall back to the Node server if `wrangler dev` cannot start here
+ * (E2E_TARGET=node skips the Worker; E2E_TARGET=worker makes a failed start an error).
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { register as registerAccounts, registerWithoutDatabase } from './accounts.mjs'
 import { register as registerEngine } from './engine.mjs'
 import { loadPlaywright, notebook, Suite } from './helpers.mjs'
 import { register as registerLab } from './lab.mjs'
 import { startServer } from './server.mjs'
+import { startWorker } from './worker.mjs'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const dist = join(repo, 'dist-e2e')
@@ -64,11 +74,57 @@ const demoNotebook = notebook([
 ])
 
 const { chromium } = loadPlaywright()
+const CONTROLLER = { name: 'Test University', contact: 'privacy@lab.test' }
+const emails = []
 const server = await startServer({
   root: dist,
   headersFile: join(repo, 'public', '_headers'),
   extraFiles: { '/test-tone.wav': writeTemp('test-tone.wav', toneWav()) },
+  controllerName: CONTROLLER.name,
+  controllerContact: CONTROLLER.contact,
+  sendEmail: async (message) => void emails.push(message),
 })
+
+/** Where the tests of accounts run: the real Worker if it starts here, else the Node server. */
+async function accountsSite() {
+  const wanted = process.env.E2E_TARGET ?? 'auto'
+  if (wanted !== 'node') {
+    try {
+      const worker = await startWorker({ repo, assets: dist, vars: { CONTROLLER_NAME: CONTROLLER.name, CONTROLLER_CONTACT: CONTROLLER.contact } })
+      const noDatabase = await startWorker({ repo, assets: dist, database: false })
+      return {
+        site: { kind: 'worker', url: worker.url, passwordReset: false, resetLink: (email) => worker.resetLink(email) },
+        noDatabase: { url: noDatabase.url },
+        describe: `the Worker under wrangler dev with a local D1 database (${worker.url}); migration applied by wrangler: ${/0001_init\.sql/.test(worker.migration) ? '0001_init.sql' : '?'}`,
+        close: async () => {
+          await worker.close()
+          await noDatabase.close()
+        },
+      }
+    } catch (err) {
+      if (wanted === 'worker') throw err
+      console.log(`wrangler dev did not start here, so the accounts tests use the Node server instead.\n  ${String(err.message).split('\n')[0]}\n`)
+    }
+  }
+  return {
+    site: {
+      kind: 'node',
+      url: server.url,
+      passwordReset: true,
+      // The Node server hands emails to the test instead of sending them.
+      resetLink: async (email) => {
+        const message = emails.findLast((m) => m.to === email)
+        if (!message) throw new Error(`no reset email for ${email}`)
+        return /http:\/\/[\w.:]+\/reset#token=[\w-]+/.exec(message.text)[0]
+      },
+    },
+    noDatabase: null,
+    describe: `the Node server (${server.url})`,
+    close: async () => {},
+  }
+}
+
+const accounts = await accountsSite()
 const browser = await chromium.launch()
 // A second browser whose microphone is a fake device that needs no permission prompt.
 const micBrowser = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] })
@@ -85,17 +141,26 @@ const screenshotDir = process.env.SCREENSHOT_DIR ? resolve(process.env.SCREENSHO
 if (screenshotDir) mkdirSync(screenshotDir, { recursive: true })
 
 const suite = new Suite()
-const env = { browser, micBrowser, url: server.url, screenshotDir, demoNotebook }
-registerEngine(suite, env)
-registerLab(suite, env)
+const env = { browser, micBrowser, url: server.url, screenshotDir, demoNotebook, site: accounts.site, noDatabase: accounts.noDatabase }
+// E2E_SUITE=notebooks or E2E_SUITE=accounts runs one half only.
+const half = process.env.E2E_SUITE ?? 'all'
+if (half !== 'accounts') {
+  registerEngine(suite, env)
+  registerLab(suite, env)
+}
+if (half !== 'notebooks') {
+  registerAccounts(suite, env)
+  if (accounts.noDatabase) registerWithoutDatabase(suite, env)
+}
 
-console.log(`End-to-end tests against ${server.url} (Chromium ${browser.version()})\n`)
+console.log(`End-to-end tests (Chromium ${browser.version()})\n  notebooks: the Node server (${server.url})\n  accounts:  ${accounts.describe}\n`)
 let ok = false
 try {
   ok = await suite.run(process.argv[2])
 } finally {
   await browser.close()
   await micBrowser.close()
+  await accounts.close()
   await server.close()
 }
 process.exit(ok ? 0 : 1)
